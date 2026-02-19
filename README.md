@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" width="800" alt="OptimizeQL Logo">
+  <img src="assets/logo.png" width="500" alt="OptimizeQL Logo">
 
   # 🔍 OptimizeQL — Your SQL Assistant
 
