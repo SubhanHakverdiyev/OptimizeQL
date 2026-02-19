@@ -16,8 +16,7 @@ AI-powered SQL query optimizer that analyzes EXPLAIN plans and suggests indexes,
   <a href="#-quick-start">🚀 Quick Start</a> &middot;
   <a href="#-features">✨ Features</a> &middot;
   <a href="#%EF%B8%8F-configuration">⚙️ Configuration</a> &middot;
-  <a href="#-contributing">🤝 Contributing</a> &middot;
-  <a href="LICENSE">📄 MIT License</a>
+  <a href="#-contributing">🤝 Contributing</a>
 </p>
 </div>
 
