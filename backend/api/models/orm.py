@@ -42,7 +42,7 @@ class DBConnection(Base):
     )
 
     query_history: Mapped[list["QueryHistory"]] = relationship(
-        "QueryHistory", back_populates="connection", cascade="all, delete-orphan"
+        "QueryHistory", back_populates="connection", passive_deletes=True
     )
 
 
