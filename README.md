@@ -23,11 +23,11 @@ AI-powered SQL query optimizer that analyzes EXPLAIN plans and suggests indexes,
 ---
 
 <p align="center">
-  <img src="assets/mainpage.png" width="700" alt="OptimizeQL Main Page">
+  <img src="assets/mainpage.png" width="800" alt="OptimizeQL Main Page">
 </p>
 
 <p align="center">
-  <img src="assets/llmsettings.png" width="700" alt="OptimizeQL LLM Settings">
+  <img src="assets/llmsettings.png" width="800" alt="OptimizeQL LLM Settings">
 </p>
 
 ---
