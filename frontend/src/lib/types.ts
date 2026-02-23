@@ -60,7 +60,33 @@ export interface AnalysisResult {
   configuration: ConfigurationItem[];
   summary: string;
   explain_plan: string | null;
+  explain_error?: string | null;
   tables_analyzed: string[];
+}
+
+// ── Query Comparison ────────────────────────────────────────────────────────
+
+export interface CompareRequest {
+  original_sql: string;
+  rewritten_sql: string;
+  connection_id: string;
+  row_limit?: number;
+}
+
+export interface RowDiff {
+  row_number: number;
+  original_row: unknown[];
+  rewritten_row: unknown[];
+}
+
+export interface CompareResult {
+  results_match: boolean;
+  rows_compared: number;
+  original_row_count: number;
+  rewritten_row_count: number;
+  first_diff: RowDiff | null;
+  original_error: string | null;
+  rewritten_error: string | null;
 }
 
 // ── LLM Config ──────────────────────────────────────────────────────────────

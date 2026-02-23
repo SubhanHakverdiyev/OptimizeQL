@@ -100,6 +100,19 @@ class PostgreSQLConnector(BaseConnector):
             all_indexes.extend(self._fetch_indexes_for_table(table, schema=None))
         return all_indexes
 
+    def execute_limited(self, sql: str, limit: int, timeout_ms: int) -> list[tuple]:
+        """Execute a query with LIMIT inside a rollback-safe read-only block."""
+        from connectors.base import apply_limit
+
+        query = apply_limit(sql, limit)
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute(f"SET LOCAL statement_timeout = {timeout_ms}")
+                cur.execute(query)
+                return cur.fetchall()
+        finally:
+            self._conn.rollback()
+
     def close(self) -> None:
         try:
             self._conn.close()

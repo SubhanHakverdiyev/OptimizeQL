@@ -1,6 +1,8 @@
 import type {
   AnalysisResult,
   AnalyzeRequest,
+  CompareRequest,
+  CompareResult,
   ConnectionCreate,
   ConnectionResponse,
   ConnectionTestResult,
@@ -51,6 +53,13 @@ export const testConnection = (id: string) =>
 // Analysis
 export const analyzeQuery = (data: AnalyzeRequest) =>
   apiFetch<AnalysisResult>("/api/v1/analyze", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+// Comparison
+export const compareQueries = (data: CompareRequest) =>
+  apiFetch<CompareResult>("/api/v1/analyze/compare", {
     method: "POST",
     body: JSON.stringify(data),
   });

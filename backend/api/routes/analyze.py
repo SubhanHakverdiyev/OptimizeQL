@@ -11,13 +11,14 @@ from sqlalchemy.orm import Session
 
 from api.dependencies import require_api_key
 from api.models.orm import LLMConfig, QueryHistory
-from api.models.schemas import AnalysisResult, AnalyzeRequest, QueryHistoryItem
+from api.models.schemas import AnalysisResult, AnalyzeRequest, CompareRequest, CompareResult, QueryHistoryItem
 from core.config import settings
 from core.database import get_db
 from core.encryption import decrypt
 from services.connection_manager import ConnectionManager
 from services.llm_analyzer import LLMAnalyzer
 from services.llm_providers import get_provider
+from services.query_comparator import compare_queries
 from services.query_introspector import QueryIntrospectionResult, QueryIntrospector
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,10 @@ def analyze_query(
         logger.exception("LLM analysis failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"LLM analysis failed: {exc}")
 
+    # ── Attach EXPLAIN error if query execution failed ──────────────────────
+    if introspection.explain_error:
+        result.explain_error = introspection.explain_error
+
     # ── Persist to query history ──────────────────────────────────────────────
     try:
         history = QueryHistory(
@@ -126,3 +131,36 @@ def get_history(
         .all()
     )
     return rows
+
+
+@router.post("/compare", response_model=CompareResult)
+@limiter.limit(settings.rate_limit)
+def compare_rewrites(
+    request: Request,
+    body: CompareRequest,
+    db: Session = Depends(get_db),
+):
+    """Compare original and rewritten SQL by executing both and diffing results."""
+    manager = ConnectionManager(db)
+    conn_record = manager.get(body.connection_id)
+    if not conn_record:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    try:
+        connector = manager.open_connector(body.connection_id)
+        try:
+            result = compare_queries(
+                connector=connector,
+                original_sql=body.original_sql,
+                rewritten_sql=body.rewritten_sql,
+                row_limit=body.row_limit,
+            )
+        finally:
+            connector.close()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Query comparison failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Query comparison failed: {exc}")
+
+    return result

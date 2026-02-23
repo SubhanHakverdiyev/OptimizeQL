@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnalysisResult, ConfigurationItem } from "@/lib/types";
+import { useAnalysis } from "@/context/analysis-context";
 import { SuggestionCard } from "./suggestion-card";
 import { SqlHighlight } from "./sql-highlight";
 import { ImpactBadge } from "./impact-badge";
@@ -25,9 +26,11 @@ function sortByImpact(items: AnalysisResult["indexes"]) {
 interface SectionProps {
   title: string;
   items: AnalysisResult["indexes"];
+  originalSql?: string;
+  connectionId?: string | null;
 }
 
-function Section({ title, items }: SectionProps) {
+function Section({ title, items, originalSql, connectionId }: SectionProps) {
   if (items.length === 0) return null;
   const meta = sectionMeta[title] || { icon: "*", color: "text-gray-500" };
   const sorted = sortByImpact(items);
@@ -47,7 +50,12 @@ function Section({ title, items }: SectionProps) {
       </div>
       <div className="space-y-3 pl-0.5">
         {sorted.map((item, i) => (
-          <SuggestionCard key={i} item={item} />
+          <SuggestionCard
+            key={i}
+            item={item}
+            originalSql={originalSql}
+            connectionId={connectionId}
+          />
         ))}
       </div>
     </div>
@@ -85,6 +93,8 @@ function highestImpact(items: AnalysisResult["indexes"]): number {
 }
 
 export function AnalysisResults({ result }: { result: AnalysisResult }) {
+  const { sql, connectionId } = useAnalysis();
+
   const hasAnySuggestions =
     result.bottlenecks.length > 0 ||
     result.indexes.length > 0 ||
@@ -106,6 +116,21 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
 
   return (
     <div className="space-y-2">
+      {/* Query execution error — shown before summary */}
+      {result.explain_error && (
+        <div className="rounded-lg overflow-hidden border border-red-200 mb-4">
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+            </svg>
+            <span className="text-[13px] font-semibold">Query Execution Error</span>
+          </div>
+          <div className="px-4 py-3 bg-red-50">
+            <pre className="font-mono text-[13px] leading-relaxed text-red-800 whitespace-pre-wrap">{result.explain_error}</pre>
+          </div>
+        </div>
+      )}
+
       {/* Summary box */}
       {result.summary && (
         <div className="bg-[#eef2f9] border border-[#c8d4e8] rounded-xl p-5 mb-4">
@@ -152,7 +177,13 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
 
       {/* Suggestion sections — sorted by highest impact */}
       {sections.map((s) => (
-        <Section key={s.title} title={s.title} items={s.items} />
+        <Section
+          key={s.title}
+          title={s.title}
+          items={s.items}
+          originalSql={s.title === "Query Rewrites" ? sql : undefined}
+          connectionId={s.title === "Query Rewrites" ? connectionId : undefined}
+        />
       ))}
 
       {/* Configuration section — different card shape */}

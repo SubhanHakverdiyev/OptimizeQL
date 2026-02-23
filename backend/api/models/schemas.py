@@ -85,7 +85,38 @@ class AnalysisResult(BaseModel):
     configuration: list[ConfigurationItem] = []
     summary: str = ""
     explain_plan: str | None = None
+    explain_error: str | None = None
     tables_analyzed: list[str] = []
+
+
+# ─────────────────────────────  Comparison  ──────────────────────────────────
+
+class CompareRequest(BaseModel):
+    original_sql: str = Field(..., min_length=1)
+    rewritten_sql: str = Field(..., min_length=1)
+    connection_id: str = Field(..., min_length=1)
+    row_limit: int = Field(default=100, gt=0, le=1000)
+
+    @field_validator("original_sql", "rewritten_sql")
+    @classmethod
+    def strip_sql_fields(cls, v: str) -> str:
+        return v.strip()
+
+
+class RowDiff(BaseModel):
+    row_number: int
+    original_row: list
+    rewritten_row: list
+
+
+class CompareResult(BaseModel):
+    results_match: bool
+    rows_compared: int
+    original_row_count: int
+    rewritten_row_count: int
+    first_diff: RowDiff | None = None
+    original_error: str | None = None
+    rewritten_error: str | None = None
 
 
 # ─────────────────────────────  LLM Config  ──────────────────────────────────

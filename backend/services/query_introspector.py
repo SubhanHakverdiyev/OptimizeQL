@@ -53,12 +53,14 @@ class QueryIntrospectionResult:
         table_schemas: list[TableSchema],
         table_names: list[str],
         db_type: str | None = None,
+        explain_error: str | None = None,
     ) -> None:
         self.sql = sql
         self.explain = explain
         self.table_schemas = table_schemas
         self.table_names = table_names
         self.db_type = db_type
+        self.explain_error = explain_error
 
 
 class QueryIntrospector:
@@ -73,10 +75,12 @@ class QueryIntrospector:
 
         # 1. Run EXPLAIN ANALYZE
         explain: ExplainResult | None = None
+        explain_error: str | None = None
         try:
             explain = self._connector.explain_analyze(sql, settings.explain_timeout_ms)
         except Exception as exc:
             logger.warning("EXPLAIN ANALYZE failed: %s", exc)
+            explain_error = str(exc).strip()
 
         # 2. Fetch schema + stats for each referenced table
         table_schemas: list[TableSchema] = []
@@ -92,4 +96,5 @@ class QueryIntrospector:
             explain=explain,
             table_schemas=table_schemas,
             table_names=table_names,
+            explain_error=explain_error,
         )

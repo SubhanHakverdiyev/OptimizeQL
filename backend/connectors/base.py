@@ -1,8 +1,20 @@
 """Abstract base class for database connectors."""
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
+
+
+_LIMIT_RE = re.compile(r"\bLIMIT\s+\d+\s*$", re.IGNORECASE)
+
+
+def apply_limit(sql: str, limit: int) -> str:
+    """Strip trailing semicolon, then append LIMIT only if not already present."""
+    clean = sql.rstrip().rstrip(";")
+    if _LIMIT_RE.search(clean):
+        return clean
+    return f"{clean} LIMIT {limit}"
 
 
 @dataclass
@@ -59,6 +71,10 @@ class BaseConnector(ABC):
     @abstractmethod
     def get_existing_indexes(self, table_names: list[str]) -> list[IndexInfo]:
         """Return all indexes that cover the given tables."""
+
+    @abstractmethod
+    def execute_limited(self, sql: str, limit: int, timeout_ms: int) -> list[tuple]:
+        """Execute a query with LIMIT and return raw rows for result comparison."""
 
     @abstractmethod
     def close(self) -> None:

@@ -103,6 +103,21 @@ class MySQLConnector(BaseConnector):
             all_indexes.extend(self._fetch_indexes_for_table(table, db))
         return all_indexes
 
+    def execute_limited(self, sql: str, limit: int, timeout_ms: int) -> list[tuple]:
+        """Execute a query with LIMIT inside a rollback-safe read-only block."""
+        from connectors.base import apply_limit
+
+        query = apply_limit(sql, limit)
+        try:
+            cur = self._conn.cursor()
+            cur.execute(f"SET SESSION MAX_EXECUTION_TIME={timeout_ms}")
+            cur.execute(query)
+            rows = cur.fetchall()
+            cur.close()
+            return rows
+        finally:
+            self._conn.rollback()
+
     def close(self) -> None:
         try:
             self._conn.close()
