@@ -111,6 +111,30 @@ class ConnectionManager:
         else:
             raise ValueError(f"Unsupported db_type: {conn.db_type!r}")
 
+    def open_raw_pg_connection(self, connection_id: str):
+        """Open a raw psycopg2 connection WITHOUT read-only restriction.
+
+        Used for HypoPG simulation which requires write access for
+        CREATE EXTENSION and hypopg_create_index().
+        """
+        import psycopg2
+
+        conn = self.get(connection_id)
+        if not conn:
+            raise ValueError(f"Connection {connection_id!r} not found")
+        if conn.db_type != "postgresql":
+            raise ValueError("HypoPG simulation is only available for PostgreSQL")
+
+        password = decrypt(conn.encrypted_password)
+        return psycopg2.connect(
+            host=_resolve_host(conn.host),
+            port=conn.port,
+            dbname=conn.database,
+            user=conn.username,
+            password=password,
+            sslmode="require" if conn.ssl_enabled else "prefer",
+        )
+
     def test_connection(self, connection_id: str) -> bool:
         connector = self.open_connector(connection_id)
         try:

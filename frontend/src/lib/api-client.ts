@@ -6,10 +6,13 @@ import type {
   ConnectionCreate,
   ConnectionResponse,
   ConnectionTestResult,
+  DashboardStats,
   LLMConfigCreate,
   LLMConfigResponse,
   ProviderInfo,
   QueryHistoryItem,
+  SimulateIndexRequest,
+  SimulateIndexResult,
 } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -64,6 +67,13 @@ export const compareQueries = (data: CompareRequest) =>
     body: JSON.stringify(data),
   });
 
+// Index Simulation
+export const simulateIndex = (data: SimulateIndexRequest) =>
+  apiFetch<SimulateIndexResult>("/api/v1/analyze/simulate-index", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
 // History
 export const getHistory = (limit = 50) =>
   apiFetch<QueryHistoryItem[]>(`/api/v1/analyze/history?limit=${limit}`);
@@ -94,3 +104,7 @@ export const activateLLMConfig = (id: string) =>
 
 export const listProviders = () =>
   apiFetch<ProviderInfo[]>("/api/v1/llm-settings/providers");
+
+// Dashboard
+export const getDashboardStats = () =>
+  apiFetch<DashboardStats>("/api/v1/analyze/stats");

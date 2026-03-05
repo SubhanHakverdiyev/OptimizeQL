@@ -40,31 +40,31 @@ export function LLMConfigForm({ onSubmit, onCancel }: LLMConfigFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-gray-200 bg-white p-6 space-y-4"
+      className="rounded-xl border border-(--color-border-strong) bg-(--color-surface) p-6 space-y-4"
     >
-      <h3 className="text-lg font-semibold text-gray-900">Add API Key</h3>
+      <h3 className="text-lg font-semibold text-(--color-foreground)">Add API Key</h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. My Gemini Key"
             required
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-200"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground)
+                       focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-200 dark:focus:border-blue-700"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Provider</label>
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value as LLMConfigCreate["provider"])}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white
-                       focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-200"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground)
+                       focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-200 dark:focus:border-blue-700"
           >
             {providers.map((p) => (
               <option key={p.name} value={p.name}>
@@ -75,15 +75,15 @@ export function LLMConfigForm({ onSubmit, onCancel }: LLMConfigFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">API Key</label>
           <input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="Enter your API key"
             required
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono
-                       focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-200"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm font-mono bg-(--color-surface) text-(--color-foreground)
+                       focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-200 dark:focus:border-blue-700"
           />
         </div>
       </div>
@@ -92,15 +92,15 @@ export function LLMConfigForm({ onSubmit, onCancel }: LLMConfigFormProps) {
         <button
           type="submit"
           disabled={submitting || !name || !apiKey}
-          className="px-4 py-2 bg-[#1e3a5f] text-white text-sm font-medium rounded-lg
-                     hover:bg-[#2a4d7a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2 bg-[#1e3a5f] dark:bg-blue-600 text-white text-sm font-medium rounded-lg
+                     hover:bg-[#2a4d7a] dark:hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {submitting ? "Saving..." : "Save"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-(--color-text-muted) hover:text-(--color-foreground) transition-colors"
         >
           Cancel
         </button>

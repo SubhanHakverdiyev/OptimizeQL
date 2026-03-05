@@ -89,6 +89,33 @@ export interface CompareResult {
   rewritten_error: string | null;
 }
 
+// ── Index Simulation ───────────────────────────────────────────────────────
+
+export interface SimulateIndexRequest {
+  index_sql: string;
+  query_sql: string;
+  connection_id: string;
+}
+
+export interface PlanNodeChange {
+  before: string;
+  after: string;
+  cost_before: number;
+  cost_after: number;
+}
+
+export interface SimulateIndexResult {
+  success: boolean;
+  error: string | null;
+  hypopg_available: boolean;
+  original_cost: number | null;
+  simulated_cost: number | null;
+  cost_reduction_pct: number | null;
+  original_plan: string | null;
+  simulated_plan: string | null;
+  node_changes: PlanNodeChange[];
+}
+
 // ── LLM Config ──────────────────────────────────────────────────────────────
 
 export interface LLMConfigCreate {
@@ -122,4 +149,40 @@ export interface QueryHistoryItem {
   sql_query: string;
   llm_response: string | null;
   created_at: string;
+}
+
+// ── Dashboard Stats ────────────────────────────────────────────────────────
+
+export interface QueryByDate {
+  date: string;
+  count: number;
+}
+
+export interface CategoryCount {
+  category: string;
+  count: number;
+}
+
+export interface TableCount {
+  table_name: string;
+  count: number;
+}
+
+export interface RecentAnalysis {
+  id: string;
+  sql_query: string;
+  suggestion_count: number;
+  created_at: string;
+  llm_response: string | null;
+}
+
+export interface DashboardStats {
+  total_queries: number;
+  total_suggestions: number;
+  high_impact_count: number;
+  streak_days: number;
+  top_categories: CategoryCount[];
+  most_analyzed_tables: TableCount[];
+  queries_by_date: QueryByDate[];
+  recent_analyses: RecentAnalysis[];
 }

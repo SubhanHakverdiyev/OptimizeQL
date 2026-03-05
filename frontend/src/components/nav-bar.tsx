@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "@/context/theme-context";
 
 function AnalyzeIcon() {
   return (
@@ -63,8 +64,44 @@ function DocsIcon() {
   );
 }
 
+function SunIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function DashboardIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
 const mainLinks = [
-  { href: "/", label: "Analyze", icon: <AnalyzeIcon /> },
+  { href: "/", label: "Dashboard", icon: <DashboardIcon /> },
+  { href: "/analyze", label: "Analyze", icon: <AnalyzeIcon /> },
   { href: "/connections", label: "Connections", icon: <ConnectionsIcon /> },
   { href: "/history", label: "History", icon: <HistoryIcon /> },
   { href: "/settings", label: "LLM Settings", icon: <SettingsIcon /> },
@@ -72,38 +109,41 @@ const mainLinks = [
 
 export function NavBar() {
   const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
 
   return (
-    <aside className="w-[300px] shrink-0 min-h-screen bg-[#faf8f4] border-r border-gray-100 flex flex-col py-6 px-6">
+    <aside className="w-[300px] shrink-0 min-h-screen bg-(--color-background) border-r border-(--color-border) flex flex-col py-6 px-6">
       {/* Brand */}
       <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-8 h-8 bg-[#1e3a5f] rounded-lg flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 bg-[#1e3a5f] dark:bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
         </div>
-        <span className="text-base font-bold text-gray-900 tracking-tight">
-          OptimizeQL<span className="text-gray-300">.</span>
+        <span className="text-base font-bold text-(--color-foreground) tracking-tight">
+          OptimizeQL<span className="text-gray-300 dark:text-gray-600">.</span>
         </span>
       </div>
 
       {/* Menu section */}
       <div className="mb-6">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 mb-2">
+        <p className="text-[10px] font-semibold text-(--color-text-faint) uppercase tracking-widest px-3 mb-2">
           Menu
         </p>
         <nav className="space-y-0.5">
           {mainLinks.map((link) => {
             const active =
-              link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+              link.href === "/"
+                ? pathname === "/"
+                : pathname === link.href || pathname.startsWith(link.href + "/");
             return (
               <Link
                 key={link.href}
                 href={link.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   active
-                    ? "bg-white/70 text-gray-900 shadow-sm backdrop-blur-sm"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                    ? "bg-white/70 dark:bg-white/10 text-(--color-foreground) shadow-sm backdrop-blur-sm"
+                    : "text-(--color-text-muted) hover:bg-gray-50 dark:hover:bg-white/5 hover:text-(--color-foreground)"
                 }`}
               >
                 {link.icon}
@@ -114,9 +154,21 @@ export function NavBar() {
         </nav>
       </div>
 
+      {/* Theme toggle */}
+      <div className="mb-6 px-3">
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium
+                     text-(--color-text-muted) hover:bg-gray-50 dark:hover:bg-white/5 hover:text-(--color-foreground) transition-all"
+        >
+          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+        </button>
+      </div>
+
       {/* Support section pinned to bottom */}
       <div className="mt-auto">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 mb-2">
+        <p className="text-[10px] font-semibold text-(--color-text-faint) uppercase tracking-widest px-3 mb-2">
           Support
         </p>
         <nav className="space-y-0.5">
@@ -124,14 +176,14 @@ export function NavBar() {
             href="http://localhost:8000/docs"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-(--color-text-muted) hover:bg-gray-50 dark:hover:bg-white/5 hover:text-(--color-foreground) transition-all"
           >
             <DocsIcon />
             API Docs
           </a>
           <a
             href="#"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-(--color-text-muted) hover:bg-gray-50 dark:hover:bg-white/5 hover:text-(--color-foreground) transition-all"
           >
             <HelpIcon />
             Help

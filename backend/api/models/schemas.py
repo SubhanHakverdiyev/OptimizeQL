@@ -119,6 +119,50 @@ class CompareResult(BaseModel):
     rewritten_error: str | None = None
 
 
+# ─────────────────────────────  Index Simulation  ────────────────────────────
+
+class SimulateIndexRequest(BaseModel):
+    index_sql: str = Field(..., min_length=1)
+    query_sql: str = Field(..., min_length=1)
+    connection_id: str = Field(..., min_length=1)
+
+    @field_validator("index_sql")
+    @classmethod
+    def validate_index_sql(cls, v: str) -> str:
+        v = v.strip()
+        if not v.upper().startswith("CREATE INDEX") and not v.upper().startswith("CREATE UNIQUE INDEX"):
+            raise ValueError("Only CREATE INDEX statements are allowed")
+        return v
+
+    @field_validator("query_sql")
+    @classmethod
+    def validate_query_sql(cls, v: str) -> str:
+        v = v.strip()
+        first_word = v.split()[0].upper() if v.split() else ""
+        if first_word not in ("SELECT", "WITH"):
+            raise ValueError("Only SELECT queries are allowed for simulation")
+        return v
+
+
+class PlanNodeChange(BaseModel):
+    before: str
+    after: str
+    cost_before: float
+    cost_after: float
+
+
+class SimulateIndexResult(BaseModel):
+    success: bool
+    error: str | None = None
+    hypopg_available: bool = True
+    original_cost: float | None = None
+    simulated_cost: float | None = None
+    cost_reduction_pct: float | None = None
+    original_plan: str | None = None
+    simulated_plan: str | None = None
+    node_changes: list[PlanNodeChange] = []
+
+
 # ─────────────────────────────  LLM Config  ──────────────────────────────────
 
 class LLMConfigCreate(BaseModel):
@@ -161,3 +205,39 @@ class QueryHistoryItem(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ─────────────────────────────  Dashboard Stats  ─────────────────────────────
+
+class QueryByDate(BaseModel):
+    date: str
+    count: int
+
+
+class CategoryCount(BaseModel):
+    category: str
+    count: int
+
+
+class TableCount(BaseModel):
+    table_name: str
+    count: int
+
+
+class RecentAnalysis(BaseModel):
+    id: str
+    sql_query: str
+    suggestion_count: int
+    created_at: datetime
+    llm_response: str | None = None
+
+
+class DashboardStats(BaseModel):
+    total_queries: int
+    total_suggestions: int
+    high_impact_count: int = 0
+    streak_days: int = 0
+    top_categories: list[CategoryCount] = []
+    most_analyzed_tables: list[TableCount] = []
+    queries_by_date: list[QueryByDate]
+    recent_analyses: list[RecentAnalysis]

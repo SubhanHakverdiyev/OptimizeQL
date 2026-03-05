@@ -22,10 +22,10 @@ export function HistoryList({ items }: HistoryListProps) {
     try {
       const result: AnalysisResult = JSON.parse(item.llm_response);
       loadHistoryResult(item.sql_query, result);
-      router.push("/");
+      router.push("/analyze");
     } catch {
       // If JSON parsing fails, fall back to re-analyze
-      router.push(`/?sql=${encodeURIComponent(item.sql_query)}`);
+      router.push(`/analyze?sql=${encodeURIComponent(item.sql_query)}`);
     }
   };
 
@@ -33,20 +33,20 @@ export function HistoryList({ items }: HistoryListProps) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left py-2 px-3 font-medium text-gray-600">Date</th>
-            <th className="text-left py-2 px-3 font-medium text-gray-600">SQL Query</th>
-            <th className="text-right py-2 px-3 font-medium text-gray-600">Actions</th>
+          <tr className="border-b border-(--color-border-strong)">
+            <th className="text-left py-2 px-3 font-medium text-(--color-text-muted)">Date</th>
+            <th className="text-left py-2 px-3 font-medium text-(--color-text-muted)">SQL Query</th>
+            <th className="text-right py-2 px-3 font-medium text-(--color-text-muted)">Actions</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-2 px-3 text-gray-600 whitespace-nowrap">
+            <tr key={item.id} className="border-b border-(--color-border) hover:bg-gray-50 dark:hover:bg-white/5">
+              <td className="py-2 px-3 text-(--color-text-muted) whitespace-nowrap">
                 {new Date(item.created_at).toLocaleString()}
               </td>
               <td className="py-2 px-3">
-                <code className="text-xs bg-gray-100 px-2 py-1 rounded block truncate max-w-lg">
+                <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded block truncate max-w-lg text-(--color-foreground)">
                   {item.sql_query}
                 </code>
               </td>
@@ -54,14 +54,14 @@ export function HistoryList({ items }: HistoryListProps) {
                 {item.llm_response && (
                   <button
                     onClick={() => handleView(item)}
-                    className="px-2 py-1 text-xs rounded bg-[#1e3a5f] text-white hover:bg-[#2a4d7a] transition-colors"
+                    className="px-2 py-1 text-xs rounded bg-[#1e3a5f] dark:bg-blue-600 text-white hover:bg-[#2a4d7a] dark:hover:bg-blue-700 transition-colors"
                   >
                     View Result
                   </button>
                 )}
                 <Link
-                  href={`/?sql=${encodeURIComponent(item.sql_query)}`}
-                  className="px-2 py-1 text-xs rounded bg-[#eef2f9] text-[#1e3a5f] hover:bg-[#dce4f2] transition-colors"
+                  href={`/analyze?sql=${encodeURIComponent(item.sql_query)}`}
+                  className="px-2 py-1 text-xs rounded bg-[#eef2f9] dark:bg-blue-950/30 text-[#1e3a5f] dark:text-blue-400 hover:bg-[#dce4f2] dark:hover:bg-blue-900/40 transition-colors"
                 >
                   Re-analyze
                 </Link>

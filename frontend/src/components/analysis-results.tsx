@@ -28,9 +28,13 @@ interface SectionProps {
   items: AnalysisResult["indexes"];
   originalSql?: string;
   connectionId?: string | null;
+  /** Original SQL query for index simulation */
+  querySql?: string;
+  /** Database type — "postgresql" enables simulation */
+  dbType?: string | null;
 }
 
-function Section({ title, items, originalSql, connectionId }: SectionProps) {
+function Section({ title, items, originalSql, connectionId, querySql, dbType }: SectionProps) {
   if (items.length === 0) return null;
   const meta = sectionMeta[title] || { icon: "*", color: "text-gray-500" };
   const sorted = sortByImpact(items);
@@ -39,12 +43,12 @@ function Section({ title, items, originalSql, connectionId }: SectionProps) {
     <div className="mt-8">
       <div className="flex items-center gap-2.5 mb-4">
         <span
-          className={`w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center text-xs font-bold ${meta.color}`}
+          className={`w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-xs font-bold ${meta.color}`}
         >
           {meta.icon}
         </span>
-        <h3 className="text-[18px] font-semibold text-[#1f1f1f]">{title}</h3>
-        <span className="text-[14px] text-gray-400 font-normal">
+        <h3 className="text-[18px] font-semibold text-(--color-foreground)">{title}</h3>
+        <span className="text-[14px] text-(--color-text-faint) font-normal">
           {items.length} {items.length === 1 ? "suggestion" : "suggestions"}
         </span>
       </div>
@@ -55,6 +59,8 @@ function Section({ title, items, originalSql, connectionId }: SectionProps) {
             item={item}
             originalSql={originalSql}
             connectionId={connectionId}
+            querySql={querySql}
+            dbType={dbType}
           />
         ))}
       </div>
@@ -64,19 +70,19 @@ function Section({ title, items, originalSql, connectionId }: SectionProps) {
 
 function ConfigurationCard({ item }: { item: ConfigurationItem }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-5 hover:shadow-sm transition-shadow">
+    <div className="rounded-xl border border-(--color-border) bg-(--color-surface) p-5 hover:shadow-sm transition-shadow">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <p className="text-base leading-[1.75] text-[#1f1f1f]">{item.explanation}</p>
+          <p className="text-base leading-[1.75] text-(--color-foreground)">{item.explanation}</p>
           <div className="flex flex-wrap items-center gap-2 mt-2.5">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-[12px] font-mono text-gray-600">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-[12px] font-mono text-(--color-text-muted)">
               {item.parameter}
             </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-50 text-[12px] font-mono text-red-500">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/30 text-[12px] font-mono text-red-500 dark:text-red-400">
               {item.current_value}
             </span>
-            <span className="text-[12px] text-gray-400">&rarr;</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-[12px] font-mono text-emerald-600">
+            <span className="text-[12px] text-(--color-text-faint)">&rarr;</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-[12px] font-mono text-emerald-600 dark:text-emerald-400">
               {item.recommended_value}
             </span>
           </div>
@@ -93,7 +99,7 @@ function highestImpact(items: AnalysisResult["indexes"]): number {
 }
 
 export function AnalysisResults({ result }: { result: AnalysisResult }) {
-  const { sql, connectionId } = useAnalysis();
+  const { sql, connectionId, dbType } = useAnalysis();
 
   const hasAnySuggestions =
     result.bottlenecks.length > 0 ||
@@ -125,28 +131,28 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
             </svg>
             <span className="text-[13px] font-semibold">Query Execution Error</span>
           </div>
-          <div className="px-4 py-3 bg-red-50">
-            <pre className="font-mono text-[13px] leading-relaxed text-red-800 whitespace-pre-wrap">{result.explain_error}</pre>
+          <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20">
+            <pre className="font-mono text-[13px] leading-relaxed text-red-800 dark:text-red-300 whitespace-pre-wrap">{result.explain_error}</pre>
           </div>
         </div>
       )}
 
       {/* Summary box */}
       {result.summary && (
-        <div className="bg-[#eef2f9] border border-[#c8d4e8] rounded-xl p-5 mb-4">
-          <h3 className="text-[14px] font-semibold text-[#1e3a5f] mb-1.5">Summary</h3>
-          <p className="text-base leading-[1.75] text-[#1f1f1f]">{result.summary}</p>
+        <div className="bg-[#eef2f9] dark:bg-blue-950/30 border border-[#c8d4e8] dark:border-blue-900/50 rounded-xl p-5 mb-4">
+          <h3 className="text-[14px] font-semibold text-[#1e3a5f] dark:text-blue-400 mb-1.5">Summary</h3>
+          <p className="text-base leading-[1.75] text-(--color-foreground)">{result.summary}</p>
         </div>
       )}
 
       {/* Tables analyzed */}
       {result.tables_analyzed.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pb-2">
-          <span className="text-[14px] text-gray-400 mr-1">Tables:</span>
+          <span className="text-[14px] text-(--color-text-faint) mr-1">Tables:</span>
           {result.tables_analyzed.map((t) => (
             <span
               key={t}
-              className="px-2.5 py-0.5 bg-gray-50 border border-gray-100 rounded-md text-[14px] font-mono text-gray-600"
+              className="px-2.5 py-0.5 bg-gray-50 dark:bg-gray-800 border border-(--color-border) rounded-md text-[14px] font-mono text-(--color-text-muted)"
             >
               {t}
             </span>
@@ -156,8 +162,8 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
 
       {/* EXPLAIN plan — collapsible */}
       {result.explain_plan && (
-        <details className="group rounded-xl border border-gray-100 bg-gray-50/50 overflow-hidden">
-          <summary className="cursor-pointer px-4 py-3 text-[14px] font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-2">
+        <details className="group rounded-xl border border-(--color-border) bg-(--color-surface-muted) overflow-hidden">
+          <summary className="cursor-pointer px-4 py-3 text-[14px] font-medium text-(--color-text-muted) hover:text-(--color-foreground) transition-colors flex items-center gap-2">
             <svg
               className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90"
               fill="none"
@@ -182,7 +188,9 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
           title={s.title}
           items={s.items}
           originalSql={s.title === "Query Rewrites" ? sql : undefined}
-          connectionId={s.title === "Query Rewrites" ? connectionId : undefined}
+          connectionId={s.title === "Query Rewrites" || s.title === "Suggested Indexes" ? connectionId : undefined}
+          querySql={s.title === "Suggested Indexes" ? sql : undefined}
+          dbType={s.title === "Suggested Indexes" ? dbType : undefined}
         />
       ))}
 
@@ -190,11 +198,11 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
       {configItems.length > 0 && (
         <div className="mt-8">
           <div className="flex items-center gap-2.5 mb-4">
-            <span className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center text-xs font-bold text-indigo-500">
+            <span className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-indigo-500">
               C
             </span>
-            <h3 className="text-[18px] font-semibold text-[#1f1f1f]">Configuration</h3>
-            <span className="text-[14px] text-gray-400 font-normal">
+            <h3 className="text-[18px] font-semibold text-(--color-foreground)">Configuration</h3>
+            <span className="text-[14px] text-(--color-text-faint) font-normal">
               {configItems.length} {configItems.length === 1 ? "suggestion" : "suggestions"}
             </span>
           </div>
@@ -214,8 +222,8 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
 
       {!hasAnySuggestions && (
         <div className="text-center py-8">
-          <p className="text-base text-gray-400">No optimization suggestions found.</p>
-          <p className="text-[14px] text-gray-300 mt-1">The query looks well-optimized.</p>
+          <p className="text-base text-(--color-text-faint)">No optimization suggestions found.</p>
+          <p className="text-[14px] text-(--color-text-faint) opacity-60 mt-1">The query looks well-optimized.</p>
         </div>
       )}
     </div>

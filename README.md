@@ -37,6 +37,11 @@ AI-powered SQL query optimizer that analyzes EXPLAIN plans and suggests indexes,
 - 🔬 **EXPLAIN ANALYZE introspection** — connects to your PostgreSQL or MySQL database, runs EXPLAIN ANALYZE, and gathers schema, indexes, and column statistics automatically
 - 🤖 **Multi-provider LLM analysis** — supports Anthropic, OpenAI, Gemini, DeepSeek, xAI, Qwen, Meta Llama, Kimi, and OpenRouter out of the box
 - 💡 **Actionable suggestions** — returns `CREATE INDEX` statements, query rewrites, materialized views, statistics recommendations, and config tuning with estimated impact levels
+- 🧪 **HypoPG index simulation** — create virtual/hypothetical indexes using PostgreSQL's [HypoPG](https://hypopg.readthedocs.io/) extension and compare EXPLAIN plans before vs. after — no real indexes created, zero risk
+- 🔀 **Query comparison** — compare two SQL queries side-by-side to see which performs better with detailed analysis
+- 📊 **Interactive dashboard** — landing page with query activity charts, category breakdowns, optimization streaks, and most-analyzed tables
+- ✏️ **Monaco SQL editor** — full-featured code editor with SQL syntax highlighting, autocomplete, and theme-aware styling
+- 🌙 **Dark mode** — system-aware dark theme with manual toggle, persistent preference, and zero-FOUC loading
 - 🔐 **Encrypted credential storage** — all database passwords and API keys are encrypted with Fernet before storage
 - ✏️ **No-connection mode** — paste any SQL and get optimization suggestions without connecting to a live database
 - 📜 **Query history** — every analysis is persisted and searchable
@@ -47,7 +52,7 @@ AI-powered SQL query optimizer that analyzes EXPLAIN plans and suggests indexes,
 | Layer | Technology |
 |-------|-----------|
 | 🐍 Backend | Python 3.12, FastAPI, SQLAlchemy, SQLite |
-| ⚛️ Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| ⚛️ Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Monaco Editor, Recharts |
 | 🐳 Containerization | Docker, Docker Compose |
 | 📝 SQL Parsing | sqlglot |
 | 🔒 Encryption | cryptography (Fernet) |
@@ -128,6 +133,9 @@ Interactive API docs are available at:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/v1/analyze` | 🔬 Analyze a SQL query |
+| `POST` | `/api/v1/analyze/compare` | 🔀 Compare two SQL queries |
+| `POST` | `/api/v1/analyze/simulate-index` | 🧪 Simulate index with HypoPG |
+| `GET` | `/api/v1/analyze/stats` | 📊 Dashboard statistics |
 | `GET` | `/api/v1/analyze/history` | 📜 Query analysis history |
 | `POST` | `/api/v1/connections` | 🔌 Add a database connection |
 | `POST` | `/api/v1/connections/{id}/test` | 🧪 Test a saved connection |
@@ -144,7 +152,7 @@ pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
 
-✅ **83 tests** covering encryption, API endpoints, schema validation, SQL parsing, prompt building, LLM response parsing, and authentication. No external services required — all tests run against an in-memory SQLite database with mocked LLM providers.
+✅ **94 tests** covering encryption, API endpoints, schema validation, SQL parsing, prompt building, LLM response parsing, query comparison, index simulation, and authentication. No external services required — all tests run against an in-memory SQLite database with mocked LLM providers.
 
 ## 📁 Project Structure
 
@@ -167,12 +175,14 @@ OptimizeQL/
 │   │   ├── prompt_builder.py      # Dialect-aware prompt assembly
 │   │   ├── query_introspector.py  # EXPLAIN + schema collection
 │   │   ├── connection_manager.py  # DB connection CRUD
+│   │   ├── index_simulator.py     # HypoPG virtual index simulation
 │   │   └── llm_providers/         # Anthropic, OpenAI, Gemini, etc.
-│   └── tests/                     # 83 pytest tests
+│   └── tests/                     # 94 pytest tests
 └── ⚛️ frontend/
-    ├── src/app/                   # Next.js pages
-    ├── src/components/            # React components
-    └── src/lib/                   # API client
+    ├── src/app/                   # Next.js pages (Dashboard, Analyze)
+    ├── src/components/            # React components (Monaco editor, etc.)
+    ├── src/context/               # React contexts (Analysis, Theme)
+    └── src/lib/                   # API client, types
 ```
 
 ## 🤝 Contributing
@@ -199,6 +209,7 @@ Contributions are welcome! Here's how to get started:
 - 🔑 The encryption key auto-generates on first run and persists across restarts
 - ⏱️ API key authentication uses constant-time comparison (`secrets.compare_digest`)
 - 🛑 Database connections are forced into read-only transaction mode before running EXPLAIN ANALYZE
+- 🧪 HypoPG simulation uses `EXPLAIN` only (no `ANALYZE`) — planner cost estimates without query execution; virtual indexes are session-scoped and cleaned up immediately via `hypopg_reset()`
 - ⏳ EXPLAIN execution has a configurable timeout to prevent resource exhaustion
 - 🚫 The `.env` file is excluded from Docker images via `.dockerignore`
 

@@ -24,13 +24,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.theme==='dark'||(!localStorage.theme&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
+          }}
+        />
+      </head>
       <body
-        className={`${geistMono.variable} antialiased bg-[#faf8f4] min-h-screen flex`}
+        className={`${geistMono.variable} antialiased bg-(--color-background) min-h-screen flex`}
       >
         <Providers>
           <NavBar />
-          <main className="flex-1 p-8 overflow-auto min-h-screen bg-white">{children}</main>
+          <main className="flex-1 p-8 overflow-auto min-h-screen bg-(--color-surface)">{children}</main>
         </Providers>
       </body>
     </html>

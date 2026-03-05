@@ -36,15 +36,15 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">LLM Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-(--color-foreground)">LLM Settings</h1>
+          <p className="text-sm text-(--color-text-muted) mt-1">
             Configure LLM providers and API keys. The active configuration will be used for query analysis.
           </p>
         </div>
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-[#1e3a5f] text-white text-sm font-medium rounded-lg hover:bg-[#2a4d7a] transition-colors"
+            className="px-4 py-2 bg-[#1e3a5f] dark:bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-[#2a4d7a] dark:hover:bg-blue-700 transition-colors"
           >
             Add LLM
           </button>

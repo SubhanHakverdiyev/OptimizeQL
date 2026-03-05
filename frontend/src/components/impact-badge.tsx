@@ -1,7 +1,7 @@
 const config = {
-  high: { bg: "bg-red-50", text: "text-red-600", dot: "bg-red-400", label: "High impact" },
-  medium: { bg: "bg-amber-50", text: "text-amber-600", dot: "bg-amber-400", label: "Medium" },
-  low: { bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-400", label: "Low" },
+  high: { bg: "bg-red-50 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400", dot: "bg-red-400", label: "High impact" },
+  medium: { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-400", label: "Medium" },
+  low: { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400", label: "Low" },
 } as const;
 
 export function ImpactBadge({ impact }: { impact: "high" | "medium" | "low" }) {

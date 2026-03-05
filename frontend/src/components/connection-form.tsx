@@ -40,25 +40,25 @@ export function ConnectionForm({ onSubmit, onCancel }: ConnectionFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border border-gray-200 rounded-lg p-4 bg-white space-y-4">
-      <h3 className="text-base font-semibold text-gray-900">Add Connection</h3>
+    <form onSubmit={handleSubmit} className="border border-(--color-border-strong) rounded-lg p-4 bg-(--color-surface) space-y-4">
+      <h3 className="text-base font-semibold text-(--color-foreground)">Add Connection</h3>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Name</label>
           <input
             type="text"
             required
             value={form.name}
             onChange={(e) => update("name", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground) focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-blue-500"
             placeholder="My Database"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Type</label>
           <select
             value={form.db_type}
             onChange={(e) => {
@@ -66,64 +66,64 @@ export function ConnectionForm({ onSubmit, onCancel }: ConnectionFormProps) {
               update("db_type", type);
               update("port", type === "postgresql" ? 5432 : 3306);
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground) focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-blue-500"
           >
             <option value="postgresql">PostgreSQL</option>
             <option value="mysql">MySQL</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Host</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Host</label>
           <input
             type="text"
             required
             value={form.host}
             onChange={(e) => update("host", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground) focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Port</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Port</label>
           <input
             type="number"
             required
             value={form.port}
             onChange={(e) => update("port", parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground) focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Database</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Database</label>
           <input
             type="text"
             required
             value={form.database}
             onChange={(e) => update("database", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground) focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Username</label>
           <input
             type="text"
             required
             value={form.username}
             onChange={(e) => update("username", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground) focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label className="block text-sm font-medium text-(--color-text-muted) mb-1">Password</label>
           <input
             type="password"
             required
             value={form.password}
             onChange={(e) => update("password", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full px-3 py-2 border border-(--color-border-strong) rounded-lg text-sm bg-(--color-surface) text-(--color-foreground) focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-blue-500"
           />
         </div>
         <div className="flex items-end">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-(--color-text-muted)">
             <input
               type="checkbox"
               checked={form.ssl_enabled}
@@ -139,14 +139,14 @@ export function ConnectionForm({ onSubmit, onCancel }: ConnectionFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 bg-[#1e3a5f] text-white text-sm font-medium rounded-lg hover:bg-[#2a4d7a] disabled:opacity-50 transition-colors"
+          className="px-4 py-2 bg-[#1e3a5f] dark:bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-[#2a4d7a] dark:hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {loading ? "Creating..." : "Create Connection"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+          className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-(--color-text-muted) text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         >
           Cancel
         </button>

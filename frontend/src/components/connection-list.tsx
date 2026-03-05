@@ -44,38 +44,38 @@ export function ConnectionList({ connections, onRefresh }: ConnectionListProps) 
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left py-2 px-3 font-medium text-gray-600">Name</th>
-            <th className="text-left py-2 px-3 font-medium text-gray-600">Type</th>
-            <th className="text-left py-2 px-3 font-medium text-gray-600">Host</th>
-            <th className="text-left py-2 px-3 font-medium text-gray-600">Database</th>
-            <th className="text-right py-2 px-3 font-medium text-gray-600">Actions</th>
+          <tr className="border-b border-(--color-border-strong)">
+            <th className="text-left py-2 px-3 font-medium text-(--color-text-muted)">Name</th>
+            <th className="text-left py-2 px-3 font-medium text-(--color-text-muted)">Type</th>
+            <th className="text-left py-2 px-3 font-medium text-(--color-text-muted)">Host</th>
+            <th className="text-left py-2 px-3 font-medium text-(--color-text-muted)">Database</th>
+            <th className="text-right py-2 px-3 font-medium text-(--color-text-muted)">Actions</th>
           </tr>
         </thead>
         <tbody>
           {connections.map((conn) => (
-            <tr key={conn.id} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-2 px-3 font-medium text-gray-900">{conn.name}</td>
+            <tr key={conn.id} className="border-b border-(--color-border) hover:bg-gray-50 dark:hover:bg-white/5">
+              <td className="py-2 px-3 font-medium text-(--color-foreground)">{conn.name}</td>
               <td className="py-2 px-3">
-                <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-medium">
+                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-medium">
                   {conn.db_type}
                 </span>
               </td>
-              <td className="py-2 px-3 text-gray-600">
+              <td className="py-2 px-3 text-(--color-text-muted)">
                 {conn.host}:{conn.port}
               </td>
-              <td className="py-2 px-3 text-gray-600">{conn.database}</td>
+              <td className="py-2 px-3 text-(--color-text-muted)">{conn.database}</td>
               <td className="py-2 px-3 text-right space-x-2">
                 <button
                   onClick={() => handleTest(conn.id)}
                   disabled={testing === conn.id}
-                  className="px-2 py-1 text-xs rounded bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors"
+                  className="px-2 py-1 text-xs rounded bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 disabled:opacity-50 transition-colors"
                 >
                   {testing === conn.id ? "Testing..." : "Test"}
                 </button>
                 <button
                   onClick={() => handleDelete(conn.id)}
-                  className="px-2 py-1 text-xs rounded bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                  className="px-2 py-1 text-xs rounded bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                 >
                   Delete
                 </button>

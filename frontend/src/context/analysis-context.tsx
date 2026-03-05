@@ -6,6 +6,7 @@ import type { AnalysisResult } from "@/lib/types";
 interface AnalysisState {
   sql: string;
   connectionId: string | null;
+  dbType: string | null;
   result: AnalysisResult | null;
   loading: boolean;
   error: string;
@@ -14,6 +15,7 @@ interface AnalysisState {
 interface AnalysisContextValue extends AnalysisState {
   setSql: (sql: string) => void;
   setConnectionId: (id: string | null) => void;
+  setDbType: (dbType: string | null) => void;
   setResult: (result: AnalysisResult | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string) => void;
@@ -26,6 +28,7 @@ const AnalysisContext = createContext<AnalysisContextValue | null>(null);
 export function AnalysisProvider({ children }: { children: React.ReactNode }) {
   const [sql, setSql] = useState("");
   const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [dbType, setDbType] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,11 +48,13 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       value={{
         sql,
         connectionId,
+        dbType,
         result,
         loading,
         error,
         setSql,
         setConnectionId,
+        setDbType,
         setResult,
         setLoading,
         setError,
