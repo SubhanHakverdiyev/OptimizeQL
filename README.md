@@ -93,6 +93,32 @@ npm run dev
 
 > 📍 Backend runs at `http://localhost:8000`, frontend at `http://localhost:3000`.
 
+### 🧪 HypoPG Setup (optional)
+
+To enable **index simulation**, install the [HypoPG](https://hypopg.readthedocs.io/) extension on your PostgreSQL database:
+
+```bash
+# Ubuntu / Debian
+sudo apt install postgresql-16-hypopg   # match your PG version
+
+# macOS (Homebrew)
+brew install hypopg
+
+# From source
+git clone https://github.com/HypoPG/hypopg.git
+cd hypopg
+make
+sudo make install
+```
+
+Then enable it in your database:
+
+```sql
+CREATE EXTENSION hypopg;
+```
+
+> 💡 HypoPG is optional — all other features work without it. If not installed, the "Simulate" button on index suggestions will show a helpful message.
+
 ## ⚙️ Configuration
 
 All configuration is done through the UI — add your LLM API key and database connections from the settings page. No `.env` editing required for basic usage.
