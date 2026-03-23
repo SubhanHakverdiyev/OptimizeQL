@@ -6,14 +6,16 @@ import type {
   ClientColumnStat,
 } from "./types";
 
-type PGliteInstance = import("@electric-sql/pglite").PGlite;
+type PGliteWorkerType = import("@electric-sql/pglite/worker").PGliteWorker;
 
-let db: PGliteInstance | null = null;
+let db: PGliteWorkerType | null = null;
+let rawWorker: Worker | null = null;
 
-async function getOrCreate(): Promise<PGliteInstance> {
+async function getOrCreate(): Promise<PGliteWorkerType> {
   if (db) return db;
-  const { PGlite } = await import("@electric-sql/pglite");
-  db = new PGlite();
+  const { PGliteWorker } = await import("@electric-sql/pglite/worker");
+  rawWorker = new Worker(new URL("./pglite.worker.ts", import.meta.url));
+  db = await PGliteWorker.create(rawWorker);
   return db;
 }
 
@@ -21,7 +23,7 @@ export async function initialize(): Promise<void> {
   await getOrCreate();
 }
 
-export async function getDB(): Promise<PGliteInstance> {
+export async function getDB(): Promise<PGliteWorkerType> {
   return getOrCreate();
 }
 
@@ -183,6 +185,10 @@ export async function reset(): Promise<void> {
   if (db) {
     await db.close();
     db = null;
+  }
+  if (rawWorker) {
+    rawWorker.terminate();
+    rawWorker = null;
   }
 }
 

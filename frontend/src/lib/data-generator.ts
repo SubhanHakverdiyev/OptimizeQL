@@ -516,57 +516,64 @@ function generateValue(
   }
 
   // ── Universal column-name heuristics (no hint matched) ──────────────────
-  if (name.includes("email")) {
-    return esc(`user${index}@${faker.internet.domainName()}`);
-  }
-  if (name.includes("first_name")) return esc(faker.person.firstName());
-  if (name.includes("last_name")) return esc(faker.person.lastName());
-  if (name === "name" || name.includes("full_name")) {
-    const v = faker.person.fullName() as string;
-    const raw = isUnique ? `${v} ${index}` : v;
-    return esc(trunc(raw, maxLen));
-  }
-  if (name.includes("username")) {
-    return esc(`user_${index}`);
-  }
-  if (name.includes("phone")) return esc(faker.phone.number());
-  if (name.includes("address") || name.includes("street"))
-    return esc(faker.location.streetAddress());
-  if (name.includes("city")) return esc(faker.location.city());
-  if (name.includes("country")) return esc(faker.location.country());
-  if (name.includes("zip") || name.includes("postal"))
-    return esc(faker.location.zipCode());
-  if (name.includes("url") || name.includes("website"))
-    return esc(faker.internet.url());
-  if (name.includes("title")) {
-    const v = faker.lorem.sentence({ min: 2, max: 5 }) as string;
-    const raw = isUnique ? `${v} #${index}` : v;
-    return esc(trunc(raw, maxLen));
-  }
-  if (
-    name.includes("description") ||
-    name.includes("body") ||
-    name.includes("bio") ||
-    name.includes("content")
-  )
-    return esc(trunc(faker.lorem.paragraph() as string, maxLen));
-  if (
-    name.includes("price") ||
-    name.includes("amount") ||
-    name.includes("cost") ||
-    name.includes("total")
-  )
-    return String(faker.commerce.price({ min: 1, max: 999 }));
-  if (
-    name.includes("quantity") ||
-    name.includes("qty") ||
-    name.includes("count") ||
-    name.includes("stock")
-  )
-    return String(faker.number.int({ min: 1, max: 100 }));
+  // Skip name heuristics entirely for temporal/boolean types so that columns
+  // like "last_restocked TIMESTAMP" don't get matched by the "stock" rule.
+  const _skipNameHeuristics =
+    type.includes("timestamp") || type === "timestamptz" ||
+    type === "date" || type === "time" ||
+    type === "boolean" || type === "bool";
 
-  if (name.includes("slug")) {
-    return esc(`${faker.helpers.slugify(faker.lorem.words(3))}-${index}`);
+  if (!_skipNameHeuristics) {
+    if (name.includes("email"))
+      return esc(`user${index}@${faker.internet.domainName()}`);
+    if (name.includes("first_name")) return esc(faker.person.firstName());
+    if (name.includes("last_name")) return esc(faker.person.lastName());
+    if (name === "name" || name.includes("full_name")) {
+      const v = faker.person.fullName() as string;
+      const raw = isUnique ? `${v} ${index}` : v;
+      return esc(trunc(raw, maxLen));
+    }
+    if (name.includes("username"))
+      return esc(`user_${index}`);
+    if (name.includes("phone")) return esc(faker.phone.number());
+    if (name.includes("address") || name.includes("street"))
+      return esc(faker.location.streetAddress());
+    if (name.includes("city")) return esc(faker.location.city());
+    if (name.includes("country")) return esc(faker.location.country());
+    if (name.includes("zip") || name.includes("postal"))
+      return esc(faker.location.zipCode());
+    if (name.includes("url") || name.includes("website"))
+      return esc(faker.internet.url());
+    if (name.includes("title")) {
+      const v = faker.lorem.sentence({ min: 2, max: 5 }) as string;
+      const raw = isUnique ? `${v} #${index}` : v;
+      return esc(trunc(raw, maxLen));
+    }
+    if (
+      name.includes("description") ||
+      name.includes("body") ||
+      name.includes("bio") ||
+      name.includes("content")
+    )
+      return esc(trunc(faker.lorem.paragraph() as string, maxLen));
+    if (
+      name.includes("price") ||
+      name.includes("amount") ||
+      name.includes("cost") ||
+      name.includes("total")
+    )
+      return String(faker.commerce.price({ min: 1, max: 999 }));
+    if (name.includes("rating") || name.includes("score") || name.includes("stars"))
+      return String(faker.number.int({ min: 1, max: 5 }));
+    if (
+      name.includes("quantity") ||
+      name.includes("qty") ||
+      name.includes("count") ||
+      name.includes("stock")
+    )
+      return String(faker.number.int({ min: 1, max: 100 }));
+    if (name.includes("slug"))
+      return esc(`${faker.helpers.slugify(faker.lorem.words(3))}-${index}`);
   }
 
   // ── Type-based fallback ─────────────────────────────────────────────────
