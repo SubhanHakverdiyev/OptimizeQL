@@ -290,6 +290,11 @@ export async function generateAndInsertData(
             (e as Error).message ?? e,
           );
         }
+
+        // Yield to browser so UI stays responsive
+        if (batch % (batchSize * 4) === 0) {
+          await new Promise((r) => setTimeout(r, 0));
+        }
       }
 
       insertedIds.set(tableName, []);
@@ -345,6 +350,11 @@ export async function generateAndInsertData(
           );
           break;
         }
+      }
+
+      // Yield to the browser every few batches so the UI stays responsive
+      if (batch % (batchSize * 4) === 0) {
+        await new Promise((r) => setTimeout(r, 0));
       }
     }
 
