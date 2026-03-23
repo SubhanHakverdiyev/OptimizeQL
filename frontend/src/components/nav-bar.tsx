@@ -99,13 +99,17 @@ function DashboardIcon() {
   );
 }
 
-const mainLinks = [
-  { href: "/", label: "Dashboard", icon: <DashboardIcon /> },
+const isHosted = !!(process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes("localhost"));
+
+const allLinks = [
+  { href: "/", label: "Dashboard", icon: <DashboardIcon />, selfHostedOnly: true },
   { href: "/analyze", label: "Analyze", icon: <AnalyzeIcon /> },
-  { href: "/connections", label: "Connections", icon: <ConnectionsIcon /> },
+  { href: "/connections", label: "Connections", icon: <ConnectionsIcon />, selfHostedOnly: true },
   { href: "/history", label: "History", icon: <HistoryIcon /> },
-  { href: "/settings", label: "LLM Settings", icon: <SettingsIcon /> },
+  { href: "/settings", label: "LLM Settings", icon: <SettingsIcon />, selfHostedOnly: true },
 ];
+
+const mainLinks = allLinks.filter((link) => !isHosted || !link.selfHostedOnly);
 
 export function NavBar() {
   const pathname = usePathname();
@@ -113,17 +117,26 @@ export function NavBar() {
 
   return (
     <aside className="w-[300px] shrink-0 min-h-screen bg-(--color-background) border-r border-(--color-border) flex flex-col py-6 px-6">
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-8 h-8 bg-[#1e3a5f] dark:bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      {/* Brand — links to homepage */}
+      <Link href="/" className="flex items-center gap-3 px-2 mb-8 group">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+          <svg width="32" height="32" viewBox="0 0 80 80" fill="none">
+            <defs>
+              <linearGradient id="navLogoBg" x1="10" y1="8" x2="70" y2="72" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stopColor="#1e3a5f"/>
+                <stop offset="1" stopColor="#2D5B8E"/>
+              </linearGradient>
+            </defs>
+            <rect x="4" y="4" width="72" height="72" rx="22" fill="url(#navLogoBg)"/>
+            <circle cx="39" cy="38" r="16" stroke="white" strokeWidth="3.5"/>
+            <circle cx="53" cy="30" r="4.5" fill="#F6D2B8"/>
+            <path d="M50 49L59 58" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
           </svg>
         </div>
-        <span className="text-base font-bold text-(--color-foreground) tracking-tight">
+        <span className="text-base font-bold text-(--color-foreground) tracking-tight group-hover:opacity-80 transition-opacity">
           OptimizeQL<span className="text-gray-300 dark:text-gray-600">.</span>
         </span>
-      </div>
+      </Link>
 
       {/* Menu section */}
       <div className="mb-6">
@@ -172,15 +185,17 @@ export function NavBar() {
           Support
         </p>
         <nav className="space-y-0.5">
-          <a
-            href="http://localhost:8000/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-(--color-text-muted) hover:bg-gray-50 dark:hover:bg-white/5 hover:text-(--color-foreground) transition-all"
-          >
-            <DocsIcon />
-            API Docs
-          </a>
+          {!isHosted && (
+            <a
+              href="http://localhost:8000/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-(--color-text-muted) hover:bg-gray-50 dark:hover:bg-white/5 hover:text-(--color-foreground) transition-all"
+            >
+              <DocsIcon />
+              API Docs
+            </a>
+          )}
           <a
             href="#"
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-(--color-text-muted) hover:bg-gray-50 dark:hover:bg-white/5 hover:text-(--color-foreground) transition-all"

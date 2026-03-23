@@ -1,9 +1,13 @@
 """Assemble the structured prompt sent to the LLM for query analysis."""
 
 import json
+import logging
 
 from connectors.base import ColumnStat, IndexInfo, TableSchema
+from core.config import settings
 from services.query_introspector import QueryIntrospectionResult
+
+logger = logging.getLogger(__name__)
 
 # ── Shared JSON schema & rules (used by all dialect prompts) ──────────────
 
@@ -120,6 +124,12 @@ ANALYSIS CHECKLIST — apply each lens, skip if not relevant:
 
 3. QUERY REWRITES
    Look for patterns that restructure the plan:
+   - Non-SARGable function calls on columns that prevent index usage.
+     Always prefer rewriting the predicate over creating an expression
+     index — it is more portable and enables standard B-tree indexes:
+     EXTRACT(YEAR FROM col) = 2023 → col >= '2023-01-01' AND col < '2024-01-01'
+     DATE(col) = '...' → col >= '...' AND col < '... +1 day'
+     LOWER(col) = '...' → use citext or expression index as last resort
    - Correlated subqueries that can become JOINs or lateral joins.
    - NOT IN (subquery) that should be NOT EXISTS (avoids NULL pitfalls
      and often produces better plans).
@@ -128,6 +138,9 @@ ANALYSIS CHECKLIST — apply each lens, skip if not relevant:
      MATERIALIZED is forced).
    - Inefficient pagination (OFFSET on large values) replaceable with
      keyset/cursor pagination.
+   - OR on different columns preventing index merge — rewrite as UNION
+     (not UNION ALL, unless the conditions are provably mutually exclusive,
+     because a row matching both OR branches would be duplicated).
 
 4. MEMORY AND SPILL-TO-DISK
    Inspect "Buffers:" and sort/hash node details:
@@ -207,8 +220,9 @@ ANALYSIS CHECKLIST — apply each lens, skip if not relevant:
    - HAVING used instead of WHERE (forces post-aggregation filtering).
    - Implicit type conversions that prevent index use (e.g., comparing
      a VARCHAR column to an integer).
-   - OR on different columns that prevents index merge — consider
-     rewriting as UNION.
+   - OR on different columns that prevents index merge — rewrite as
+     UNION (not UNION ALL, unless the conditions are provably mutually
+     exclusive, because a row matching both OR branches would be duplicated).
    - LIKE with leading wildcard ('%foo') — cannot use B-tree index.
    - Unnecessary DISTINCT on columns already unique via GROUP BY.
 
@@ -312,10 +326,10 @@ class PromptBuilder:
             introspection.db_type or "", _GENERIC_SYSTEM_PROMPT
         )
 
-        sections: list[str] = []
+        max_chars = settings.max_prompt_chars
 
-        # 1. The query
-        sections.append("## SQL Query\n```sql\n" + introspection.sql + "\n```")
+        # 1. The query (always kept in full — most critical section)
+        query_section = "## SQL Query\n```sql\n" + introspection.sql + "\n```"
 
         # 2. EXPLAIN ANALYZE output
         if introspection.explain:
@@ -327,9 +341,9 @@ class PromptBuilder:
                 timing += f"\nPlanning time: {pt:.2f} ms"
             if et is not None:
                 timing += f"\nExecution time: {et:.2f} ms"
-            sections.append(f"## EXPLAIN ANALYZE Output{timing}\n```\n{plan}\n```")
+            explain_section = f"## EXPLAIN ANALYZE Output{timing}\n```\n{plan}\n```"
         else:
-            sections.append(
+            explain_section = (
                 "## EXPLAIN ANALYZE Output\n"
                 "_Not available — no live database connection was provided._"
             )
@@ -339,12 +353,48 @@ class PromptBuilder:
             schema_blocks = "\n\n".join(
                 _format_table_schema(ts) for ts in introspection.table_schemas
             )
-            sections.append(f"## Table Schemas & Statistics\n```\n{schema_blocks}\n```")
+            schema_section = f"## Table Schemas & Statistics\n```\n{schema_blocks}\n```"
         else:
-            sections.append(
+            schema_section = (
                 "## Table Schemas & Statistics\n"
                 "_Not available — no live database connection was provided._"
             )
 
-        user_message = "\n\n".join(sections)
+        # ── Smart truncation: query > explain > schema ───────────────
+        joiner = "\n\n"
+        budget = max_chars - len(query_section) - len(joiner) * 2
+        truncated = False
+
+        if budget <= 0:
+            # Query alone exceeds the budget — send just the query
+            logger.warning(
+                "SQL query alone (%d chars) exceeds max_prompt_chars (%d)",
+                len(query_section), max_chars,
+            )
+            user_message = query_section
+            return system_prompt, user_message
+
+        # Fit explain section
+        if len(explain_section) > budget:
+            explain_section = explain_section[:budget - 30] + "\n… [truncated]```"
+            truncated = True
+        budget -= len(explain_section)
+
+        # Fit schema section with remaining budget
+        if budget <= 0:
+            schema_section = (
+                "## Table Schemas & Statistics\n_[Truncated to fit token budget]_"
+            )
+            truncated = True
+        elif len(schema_section) > budget:
+            schema_section = schema_section[:budget - 30] + "\n… [truncated]```"
+            truncated = True
+
+        if truncated:
+            logger.warning(
+                "Prompt truncated to fit %d char limit (query=%d, explain=%d, schema=%d)",
+                max_chars, len(query_section), len(explain_section), len(schema_section),
+            )
+
+        user_message = joiner.join([query_section, explain_section, schema_section])
         return system_prompt, user_message

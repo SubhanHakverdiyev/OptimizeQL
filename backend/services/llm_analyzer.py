@@ -75,11 +75,13 @@ class LLMAnalyzer:
         provider_override: BaseLLMProvider | None = None,
     ) -> AnalysisResult:
         provider = provider_override or self._provider
+        model_label = getattr(provider, "_model", settings.llm_model)
         system_prompt, user_message = self._prompt_builder.build(introspection)
 
         logger.info(
-            "Calling LLM for query_id=%s (override=%s)",
+            "Calling LLM for query_id=%s model=%s (override=%s)",
             query_id,
+            model_label,
             provider_override is not None,
         )
         raw_text = (
@@ -97,7 +99,7 @@ class LLMAnalyzer:
             logger.error("LLM returned an empty response for query_id=%s", query_id)
             return AnalysisResult(
                 query_id=query_id,
-                summary=f"The model ({settings.llm_model}) returned an empty response. "
+                summary=f"The model ({model_label}) returned an empty response. "
                 "This usually means the model is overloaded or does not support structured JSON output. "
                 "Try a different model or retry.",
                 bottlenecks=[],
@@ -116,7 +118,7 @@ class LLMAnalyzer:
             logger.error("LLM did not return valid JSON: %s\nRaw: %s", exc, raw_text)
             return AnalysisResult(
                 query_id=query_id,
-                summary=f"The model ({settings.llm_model}) did not return valid JSON. "
+                summary=f"The model ({model_label}) did not return valid JSON. "
                 "Try a more capable model or retry.",
                 bottlenecks=[
                     SuggestionItem(

@@ -3,17 +3,25 @@
 import { useEffect, useState } from "react";
 import { HistoryList } from "@/components/history-list";
 import { getHistory } from "@/lib/api-client";
+import { getLocalHistory } from "@/lib/local-history";
 import type { QueryHistoryItem } from "@/lib/types";
+
+const IS_HOSTED = !!(process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes("localhost"));
 
 export default function HistoryPage() {
   const [items, setItems] = useState<QueryHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getHistory()
-      .then(setItems)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    if (IS_HOSTED) {
+      setItems(getLocalHistory());
+      setLoading(false);
+    } else {
+      getHistory()
+        .then(setItems)
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }
   }, []);
 
   return (

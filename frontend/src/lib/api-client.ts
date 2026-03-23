@@ -11,12 +11,15 @@ import type {
   LLMConfigResponse,
   ProviderInfo,
   QueryHistoryItem,
+  ShareLinkCreate,
+  ShareLinkResponse,
   SimulateIndexRequest,
   SimulateIndexResult,
 } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+const IS_HOSTED = !!(process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes("localhost"));
+const API_KEY = IS_HOSTED ? "" : (process.env.NEXT_PUBLIC_API_KEY || "");
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -104,6 +107,16 @@ export const activateLLMConfig = (id: string) =>
 
 export const listProviders = () =>
   apiFetch<ProviderInfo[]>("/api/v1/llm-settings/providers");
+
+// Share Links
+export const createShareLink = (data: ShareLinkCreate) =>
+  apiFetch<ShareLinkResponse>("/api/v1/share", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const getShareLink = (id: string) =>
+  apiFetch<ShareLinkResponse>(`/api/v1/share/${id}`);
 
 // Dashboard
 export const getDashboardStats = () =>

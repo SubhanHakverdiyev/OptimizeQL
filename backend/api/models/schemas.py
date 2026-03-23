@@ -47,10 +47,30 @@ class ConnectionTestResult(BaseModel):
 
 # ─────────────────────────────  Analysis  ────────────────────────────────────
 
+class ClientExplainResult(BaseModel):
+    """EXPLAIN ANALYZE output provided by the client (PGlite playground)."""
+    raw_plan: str
+    planning_time_ms: float | None = None
+    execution_time_ms: float | None = None
+
+
+class ClientTableSchema(BaseModel):
+    """Schema info provided by the client (PGlite playground)."""
+    table_name: str
+    columns: list[dict] = []
+    row_count: int = 0
+    indexes: list[dict] = []
+    column_stats: list[dict] = []
+
+
 class AnalyzeRequest(BaseModel):
     sql: str = Field(..., min_length=1)
     connection_id: str | None = None  # Optional: skip live DB introspection if None
     model: str | None = None  # Optional: override model for this analysis
+    # Playground mode: client-provided introspection data
+    client_explain: ClientExplainResult | None = None
+    client_table_schemas: list[ClientTableSchema] | None = None
+    client_db_type: str | None = None
 
     @field_validator("sql")
     @classmethod
@@ -167,7 +187,7 @@ class SimulateIndexResult(BaseModel):
 
 class LLMConfigCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    provider: Literal["anthropic", "openai", "gemini", "deepseek", "xai", "qwen", "meta", "kimi", "openrouter"]
+    provider: Literal["anthropic", "openai", "gemini", "deepseek", "xai", "qwen", "meta", "kimi", "groq", "openrouter"]
     api_key: str = Field(..., min_length=1)
 
 
@@ -195,6 +215,29 @@ class ProviderInfo(BaseModel):
     models: list[str]
 
 
+# ─────────────────────────────  Share Links  ─────────────────────────────────
+
+class ShareLinkCreate(BaseModel):
+    schema_ddl: str | None = None
+    sql_query: str = Field(..., min_length=1)
+    llm_response: str | None = None  # JSON-stringified AnalysisResult
+
+    @field_validator("sql_query")
+    @classmethod
+    def strip_sql(cls, v: str) -> str:
+        return v.strip()
+
+
+class ShareLinkResponse(BaseModel):
+    id: str
+    schema_ddl: str | None = None
+    sql_query: str
+    llm_response: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ─────────────────────────────  Query History  ───────────────────────────────
 
 class QueryHistoryItem(BaseModel):
@@ -202,6 +245,7 @@ class QueryHistoryItem(BaseModel):
     connection_id: str | None
     sql_query: str
     llm_response: str | None = None
+    schema_ddl: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

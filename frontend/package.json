@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.3.16",
+    "@faker-js/faker": "^10.3.0",
     "@fontsource/google-sans": "^5.2.1",
     "@monaco-editor/react": "^4.7.0",
     "@types/react-syntax-highlighter": "^15.5.13",

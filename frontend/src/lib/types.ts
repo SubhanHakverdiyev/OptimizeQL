@@ -27,10 +27,55 @@ export interface ConnectionTestResult {
   message: string;
 }
 
+// ── Playground (client-provided introspection) ─────────────────────────────
+
+export interface ClientExplainResult {
+  raw_plan: string;
+  planning_time_ms: number | null;
+  execution_time_ms: number | null;
+}
+
+export interface ClientTableColumn {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+  column_default: string | null;
+  character_maximum_length?: number | null;
+}
+
+export interface ClientTableIndex {
+  index_name: string;
+  table_name: string;
+  columns: string[];
+  is_unique: boolean;
+  index_type: string;
+  definition: string;
+}
+
+export interface ClientColumnStat {
+  column_name: string;
+  null_frac: number;
+  avg_width: number;
+  n_distinct: number;
+}
+
+export interface ClientTableSchema {
+  table_name: string;
+  columns: ClientTableColumn[];
+  row_count: number;
+  indexes: ClientTableIndex[];
+  column_stats: ClientColumnStat[];
+}
+
+export type AnalyzeMode = "connect" | "playground" | "none";
+
 export interface AnalyzeRequest {
   sql: string;
   connection_id?: string | null;
   model?: string | null;
+  client_explain?: ClientExplainResult | null;
+  client_table_schemas?: ClientTableSchema[] | null;
+  client_db_type?: string | null;
 }
 
 export interface SuggestionItem {
@@ -64,6 +109,22 @@ export interface AnalysisResult {
   tables_analyzed: string[];
 }
 
+// ── Share Links ─────────────────────────────────────────────────────────────
+
+export interface ShareLinkCreate {
+  schema_ddl: string | null;
+  sql_query: string;
+  llm_response: string | null;
+}
+
+export interface ShareLinkResponse {
+  id: string;
+  schema_ddl: string | null;
+  sql_query: string;
+  llm_response: string | null;
+  created_at: string;
+}
+
 // ── Query Comparison ────────────────────────────────────────────────────────
 
 export interface CompareRequest {
@@ -81,6 +142,8 @@ export interface RowDiff {
 
 export interface CompareResult {
   results_match: boolean;
+  /** True when rows are identical but returned in different order */
+  order_differs?: boolean;
   rows_compared: number;
   original_row_count: number;
   rewritten_row_count: number;
@@ -120,7 +183,7 @@ export interface SimulateIndexResult {
 
 export interface LLMConfigCreate {
   name: string;
-  provider: "anthropic" | "openai" | "gemini" | "deepseek" | "xai" | "qwen" | "meta" | "kimi" | "openrouter";
+  provider: "anthropic" | "openai" | "gemini" | "deepseek" | "xai" | "qwen" | "meta" | "kimi" | "groq" | "openrouter";
   api_key: string;
 }
 
@@ -148,6 +211,7 @@ export interface QueryHistoryItem {
   connection_id: string | null;
   sql_query: string;
   llm_response: string | null;
+  schema_ddl: string | null;
   created_at: string;
 }
 

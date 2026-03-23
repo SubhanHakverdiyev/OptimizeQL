@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type { QueryHistoryItem, AnalysisResult } from "@/lib/types";
 import { useAnalysis } from "@/context/analysis-context";
 
@@ -21,12 +20,18 @@ export function HistoryList({ items }: HistoryListProps) {
     if (!item.llm_response) return;
     try {
       const result: AnalysisResult = JSON.parse(item.llm_response);
-      loadHistoryResult(item.sql_query, result);
+      loadHistoryResult(item.sql_query, result, item.schema_ddl);
       router.push("/analyze");
     } catch {
       // If JSON parsing fails, fall back to re-analyze
       router.push(`/analyze?sql=${encodeURIComponent(item.sql_query)}`);
     }
+  };
+
+  const handleReanalyze = (item: QueryHistoryItem) => {
+    // Load schema into context (without result) so playground restores DDL
+    loadHistoryResult(item.sql_query, null as unknown as AnalysisResult, item.schema_ddl);
+    router.push(`/analyze?sql=${encodeURIComponent(item.sql_query)}`);
   };
 
   return (
@@ -59,12 +64,12 @@ export function HistoryList({ items }: HistoryListProps) {
                     View Result
                   </button>
                 )}
-                <Link
-                  href={`/analyze?sql=${encodeURIComponent(item.sql_query)}`}
+                <button
+                  onClick={() => handleReanalyze(item)}
                   className="px-2 py-1 text-xs rounded bg-[#eef2f9] dark:bg-blue-950/30 text-[#1e3a5f] dark:text-blue-400 hover:bg-[#dce4f2] dark:hover:bg-blue-900/40 transition-colors"
                 >
                   Re-analyze
-                </Link>
+                </button>
               </td>
             </tr>
           ))}

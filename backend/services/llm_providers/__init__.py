@@ -11,6 +11,7 @@ _OPENAI_COMPATIBLE_URLS: dict[str, str | None] = {
     "qwen":       "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "meta":       "https://api.llama.com/compat/v1",
     "kimi":       "https://api.moonshot.cn/v1",
+    "groq":       "https://api.groq.com/openai/v1",
     "openrouter": "https://openrouter.ai/api/v1",
 }
 
@@ -59,7 +60,7 @@ def get_provider(
 
     raise ValueError(
         f"Unknown LLM provider '{name}'. "
-        "Supported: anthropic, gemini, openai, deepseek, xai, qwen, meta, kimi, openrouter"
+        "Supported: anthropic, gemini, openai, deepseek, xai, qwen, meta, kimi, groq, openrouter"
     )
 
 

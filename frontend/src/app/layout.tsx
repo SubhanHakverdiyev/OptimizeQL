@@ -5,7 +5,6 @@ import "@fontsource/google-sans/500.css";
 import "@fontsource/google-sans/600.css";
 import "@fontsource/google-sans/700.css";
 import "./globals.css";
-import { NavBar } from "@/components/nav-bar";
 import { Providers } from "./providers";
 
 const geistMono = Geist_Mono({
@@ -14,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OptimizeQL",
-  description: "AI-powered SQL query analysis and optimization",
+  title: "OptimizeQL — Open Source SQL Query Optimization Tool",
+  description: "Analyze execution plans, get specific index, rewrite, and config suggestions, and simulate fixes before production. Open source, browser-based, privacy-first.",
 };
 
 export default function RootLayout({
@@ -33,11 +32,10 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistMono.variable} antialiased bg-(--color-background) min-h-screen flex`}
+        className={`${geistMono.variable} antialiased bg-(--color-background) min-h-screen`}
       >
         <Providers>
-          <NavBar />
-          <main className="flex-1 p-8 overflow-auto min-h-screen bg-(--color-surface)">{children}</main>
+          {children}
         </Providers>
       </body>
     </html>

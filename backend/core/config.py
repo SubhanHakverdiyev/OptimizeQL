@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     kimi_api_key: str | None = Field(default=None, description="Moonshot API key")
     kimi_base_url: str = Field(default="https://api.moonshot.cn/v1", description="Moonshot API base URL")
 
+    # Groq
+    groq_api_key: str | None = Field(default=None, description="Groq API key")
+
     # OpenRouter
     openrouter_api_key: str | None = Field(default=None, description="OpenRouter API key")
 
@@ -98,8 +101,12 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="meta-llama/llama-3.3-70b-instruct:free", description="LLM model ID")
     llm_max_tokens: int = Field(default=4096, description="Max output tokens for LLM response")
 
+    # Hosted mode (disables connections & LLM settings routes, drops API key auth)
+    hosted_mode: bool = Field(default=False, description="Enable hosted/playground-only mode")
+
     # Rate limiting
     rate_limit: str = Field(default="10/minute", description="Rate limit for analyze endpoint")
+    hosted_rate_limit: str = Field(default="5/day", description="Rate limit for analyze endpoint in hosted mode")
 
     # Safety
     explain_timeout_ms: int = Field(
@@ -107,8 +114,12 @@ class Settings(BaseSettings):
         description="Max milliseconds for EXPLAIN ANALYZE execution",
     )
     max_query_length: int = Field(
-        default=50_000,
+        default=10_000,
         description="Max characters in a submitted SQL query",
+    )
+    max_prompt_chars: int = Field(
+        default=16_000,
+        description="Max characters in the LLM user message (~4K tokens)",
     )
 
 

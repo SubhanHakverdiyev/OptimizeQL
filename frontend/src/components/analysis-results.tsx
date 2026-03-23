@@ -32,9 +32,10 @@ interface SectionProps {
   querySql?: string;
   /** Database type — "postgresql" enables simulation */
   dbType?: string | null;
+  playgroundMode?: boolean;
 }
 
-function Section({ title, items, originalSql, connectionId, querySql, dbType }: SectionProps) {
+function Section({ title, items, originalSql, connectionId, querySql, dbType, playgroundMode }: SectionProps) {
   if (items.length === 0) return null;
   const meta = sectionMeta[title] || { icon: "*", color: "text-gray-500" };
   const sorted = sortByImpact(items);
@@ -61,6 +62,7 @@ function Section({ title, items, originalSql, connectionId, querySql, dbType }: 
             connectionId={connectionId}
             querySql={querySql}
             dbType={dbType}
+            playgroundMode={playgroundMode}
           />
         ))}
       </div>
@@ -98,8 +100,8 @@ function highestImpact(items: AnalysisResult["indexes"]): number {
   return Math.min(...items.map((i) => impactOrder[i.estimated_impact] ?? 3));
 }
 
-export function AnalysisResults({ result }: { result: AnalysisResult }) {
-  const { sql, connectionId, dbType } = useAnalysis();
+export function AnalysisResults({ result, readOnly = false }: { result: AnalysisResult; readOnly?: boolean }) {
+  const { sql, connectionId, dbType, playgroundMode } = useAnalysis();
 
   const hasAnySuggestions =
     result.bottlenecks.length > 0 ||
@@ -187,10 +189,11 @@ export function AnalysisResults({ result }: { result: AnalysisResult }) {
           key={s.title}
           title={s.title}
           items={s.items}
-          originalSql={s.title === "Query Rewrites" ? sql : undefined}
-          connectionId={s.title === "Query Rewrites" || s.title === "Suggested Indexes" ? connectionId : undefined}
-          querySql={s.title === "Suggested Indexes" ? sql : undefined}
-          dbType={s.title === "Suggested Indexes" ? dbType : undefined}
+          originalSql={!readOnly && s.title === "Query Rewrites" ? sql : undefined}
+          connectionId={!readOnly && (s.title === "Query Rewrites" || s.title === "Suggested Indexes") ? connectionId : undefined}
+          querySql={!readOnly && s.title === "Suggested Indexes" ? sql : undefined}
+          dbType={!readOnly && s.title === "Suggested Indexes" ? dbType : undefined}
+          playgroundMode={!readOnly && (s.title === "Query Rewrites" || s.title === "Suggested Indexes") ? playgroundMode : undefined}
         />
       ))}
 

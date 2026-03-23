@@ -7,6 +7,17 @@ import { ImpactBadge } from "./impact-badge";
 import { SqlHighlight } from "./sql-highlight";
 import { CopyButton } from "./copy-button";
 
+function parseTotalCost(plan: unknown): number {
+  try {
+    const parsed = typeof plan === "string" ? JSON.parse(plan) : plan;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const node = Array.isArray(parsed) ? (parsed as any[])[0]?.Plan : (parsed as any)?.Plan;
+    return node?.["Total Cost"] ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 interface SuggestionCardProps {
   item: SuggestionItem;
   originalSql?: string;
@@ -15,9 +26,11 @@ interface SuggestionCardProps {
   querySql?: string;
   /** Database type — "postgresql" enables simulation */
   dbType?: string | null;
+  /** When true, run compare/simulate via PGlite instead of the API */
+  playgroundMode?: boolean;
 }
 
-export function SuggestionCard({ item, originalSql, connectionId, querySql, dbType }: SuggestionCardProps) {
+export function SuggestionCard({ item, originalSql, connectionId, querySql, dbType, playgroundMode }: SuggestionCardProps) {
   const [comparing, setComparing] = useState(false);
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
   const [compareError, setCompareError] = useState("");
@@ -26,21 +39,69 @@ export function SuggestionCard({ item, originalSql, connectionId, querySql, dbTy
   const [simResult, setSimResult] = useState<SimulateIndexResult | null>(null);
   const [simError, setSimError] = useState("");
 
-  const canCompare = !!(item.sql && originalSql && connectionId);
-  const canSimulate = !!(item.sql && querySql && connectionId && dbType === "postgresql" && item.index_type);
+  const canCompare = !!(item.sql && originalSql && (connectionId || playgroundMode));
+  const canSimulate = !!(item.sql && querySql && (connectionId || playgroundMode) && dbType === "postgresql" && item.index_type);
 
   async function handleCompare() {
-    if (!item.sql || !originalSql || !connectionId) return;
+    if (!item.sql || !originalSql) return;
     setComparing(true);
     setCompareResult(null);
     setCompareError("");
     try {
-      const result = await compareQueries({
-        original_sql: originalSql,
-        rewritten_sql: item.sql,
-        connection_id: connectionId,
-      });
-      setCompareResult(result);
+      if (playgroundMode) {
+        const pglite = await import("@/lib/pglite-service");
+        const db = await pglite.getDB();
+        const [origRes, rewrittenRes] = await Promise.all([
+          db.query(originalSql),
+          db.query(item.sql),
+        ]);
+        const origRows = origRes.rows;
+        const rewrittenRows = rewrittenRes.rows;
+        const maxRows = Math.max(origRows.length, rewrittenRows.length);
+        let firstDiff: CompareResult["first_diff"] = null;
+        let match = origRows.length === rewrittenRows.length;
+        let orderDiffers = false;
+        if (match) {
+          for (let i = 0; i < maxRows; i++) {
+            if (JSON.stringify(origRows[i]) !== JSON.stringify(rewrittenRows[i])) {
+              match = false;
+              firstDiff = { row_number: i + 1, original_row: origRows[i] as unknown[], rewritten_row: rewrittenRows[i] as unknown[] };
+              break;
+            }
+          }
+        }
+        // If order-sensitive comparison failed, try order-insensitive
+        if (!match && origRows.length === rewrittenRows.length) {
+          const toSorted = (rows: unknown[]) =>
+            rows.map((r) => JSON.stringify(r)).sort();
+          const sortedOrig = toSorted(origRows);
+          const sortedRewritten = toSorted(rewrittenRows);
+          const setsMatch = sortedOrig.every((r, i) => r === sortedRewritten[i]);
+          if (setsMatch) {
+            match = true;
+            orderDiffers = true;
+            firstDiff = null;
+          }
+        }
+        setCompareResult({
+          results_match: match,
+          order_differs: orderDiffers,
+          rows_compared: Math.min(origRows.length, rewrittenRows.length),
+          original_row_count: origRows.length,
+          rewritten_row_count: rewrittenRows.length,
+          first_diff: firstDiff,
+          original_error: null,
+          rewritten_error: null,
+        });
+      } else {
+        if (!connectionId) return;
+        const result = await compareQueries({
+          original_sql: originalSql,
+          rewritten_sql: item.sql,
+          connection_id: connectionId,
+        });
+        setCompareResult(result);
+      }
     } catch (err) {
       setCompareError(err instanceof Error ? err.message : "Comparison failed");
     } finally {
@@ -49,17 +110,68 @@ export function SuggestionCard({ item, originalSql, connectionId, querySql, dbTy
   }
 
   async function handleSimulate() {
-    if (!item.sql || !querySql || !connectionId) return;
+    if (!item.sql || !querySql) return;
     setSimulating(true);
     setSimResult(null);
     setSimError("");
     try {
-      const result = await simulateIndex({
-        index_sql: item.sql,
-        query_sql: querySql,
-        connection_id: connectionId,
-      });
-      setSimResult(result);
+      if (playgroundMode) {
+        const pglite = await import("@/lib/pglite-service");
+        const db = await pglite.getDB();
+        await pglite.resetPlannerSettings();
+
+        // Discover all public tables so we can inflate every one
+        const tablesRes = await db.query<{ table_name: string }>(
+          `SELECT table_name FROM information_schema.tables
+           WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
+        );
+        const allTables = tablesRes.rows.map((r) => r.table_name);
+
+        // ── BEFORE: inflate stats → EXPLAIN ──────────────────────
+        await pglite.inflateTableStats(allTables);
+        const beforeExplain = await db.query<{ "QUERY PLAN": string }>(
+          `EXPLAIN (FORMAT JSON) ${querySql}`,
+        );
+        const beforePlan = beforeExplain.rows[0]?.["QUERY PLAN"];
+        const beforeCost = parseTotalCost(beforePlan);
+
+        // ── CREATE INDEX → re-inflate (ANALYZE resets pg_class) → EXPLAIN ──
+        await db.exec(item.sql);
+        await pglite.inflateTableStats(allTables);
+        const afterExplain = await db.query<{ "QUERY PLAN": string }>(
+          `EXPLAIN (FORMAT JSON) ${querySql}`,
+        );
+        const afterPlan = afterExplain.rows[0]?.["QUERY PLAN"];
+        const afterCost = parseTotalCost(afterPlan);
+
+        // ── Cleanup: drop index + restore real stats ─────────────
+        const idxNameMatch = item.sql.match(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/i);
+        if (idxNameMatch) {
+          await db.exec(`DROP INDEX IF EXISTS ${idxNameMatch[1]}`);
+        }
+        await pglite.runAnalyze(); // restore real pg_class stats
+
+        const reduction = beforeCost > 0 ? Math.round(((beforeCost - afterCost) / beforeCost) * 100) : 0;
+        setSimResult({
+          success: true,
+          error: null,
+          hypopg_available: true,
+          original_cost: beforeCost,
+          simulated_cost: afterCost,
+          cost_reduction_pct: reduction,
+          original_plan: JSON.stringify(beforePlan, null, 2),
+          simulated_plan: JSON.stringify(afterPlan, null, 2),
+          node_changes: [],
+        });
+      } else {
+        if (!connectionId) return;
+        const result = await simulateIndex({
+          index_sql: item.sql,
+          query_sql: querySql,
+          connection_id: connectionId,
+        });
+        setSimResult(result);
+      }
     } catch (err) {
       setSimError(err instanceof Error ? err.message : "Simulation failed");
     } finally {
@@ -95,29 +207,35 @@ export function SuggestionCard({ item, originalSql, connectionId, querySql, dbTy
         </div>
       )}
       {item.sql && (
-        <div className="relative mt-4">
-          <div className="absolute top-2.5 right-2.5 z-10 flex gap-1.5">
-            {canSimulate && (
-              <button
-                onClick={handleSimulate}
-                disabled={simulating}
-                className="px-2.5 py-1 rounded-md text-[12px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
-              >
-                {simulating ? "Simulating..." : "Simulate"}
-              </button>
-            )}
-            {canCompare && (
-              <button
-                onClick={handleCompare}
-                disabled={comparing}
-                className="px-2.5 py-1 rounded-md text-[12px] font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors disabled:opacity-50"
-              >
-                {comparing ? "Comparing..." : "Verify"}
-              </button>
-            )}
-            <CopyButton text={item.sql} />
+        <div className="mt-4">
+          <div className="relative">
+            <SqlHighlight code={item.sql} />
+            <div className="absolute top-2 right-2">
+              <CopyButton text={item.sql} />
+            </div>
           </div>
-          <SqlHighlight code={item.sql} />
+          {(canSimulate || canCompare) && (
+            <div className="flex justify-end gap-1.5 mt-2">
+              {canSimulate && (
+                <button
+                  onClick={handleSimulate}
+                  disabled={simulating}
+                  className="px-2.5 py-1 rounded-md text-[12px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
+                >
+                  {simulating ? "Simulating..." : "Simulate"}
+                </button>
+              )}
+              {canCompare && (
+                <button
+                  onClick={handleCompare}
+                  disabled={comparing}
+                  className="px-2.5 py-1 rounded-md text-[12px] font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors disabled:opacity-50"
+                >
+                  {comparing ? "Comparing..." : "Verify"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -180,6 +298,11 @@ export function SuggestionCard({ item, originalSql, connectionId, querySql, dbTy
           {compareResult.results_match ? (
             <p>
               Results match — {compareResult.rows_compared} rows compared, outputs are identical.
+              {compareResult.order_differs && (
+                <span className="block text-[12px] mt-1 opacity-80">
+                  Note: Row order differs (no ORDER BY clause). Data content is the same.
+                </span>
+              )}
             </p>
           ) : (
             <>

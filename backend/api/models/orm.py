@@ -66,6 +66,42 @@ class QueryHistory(Base):
     )
 
 
+class AnalyticsLog(Base):
+    """Anonymous analytics record for product improvement (hosted mode).
+
+    Stores only suggestion counts per category — no query content.
+    No public read endpoint — only accessible via direct DB queries.
+    """
+
+    __tablename__ = "analytics_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    index_count: Mapped[int] = mapped_column(Integer, default=0)
+    rewrite_count: Mapped[int] = mapped_column(Integer, default=0)
+    materialized_view_count: Mapped[int] = mapped_column(Integer, default=0)
+    bottleneck_count: Mapped[int] = mapped_column(Integer, default=0)
+    statistics_count: Mapped[int] = mapped_column(Integer, default=0)
+    configuration_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+def _short_id() -> str:
+    """Generate a short 8-char URL-safe ID."""
+    return uuid.uuid4().hex[:8]
+
+
+class ShareLink(Base):
+    """Shareable snapshot of a playground analysis."""
+
+    __tablename__ = "share_links"
+
+    id: Mapped[str] = mapped_column(String(8), primary_key=True, default=_short_id)
+    schema_ddl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sql_query: Mapped[str] = mapped_column(Text, nullable=False)
+    llm_response: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class LLMConfig(Base):
     """User-configured LLM provider API key (one key per provider)."""
 

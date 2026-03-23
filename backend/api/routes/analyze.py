@@ -6,11 +6,10 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from api.dependencies import require_api_key
-from api.models.orm import LLMConfig, QueryHistory
+from api.dependencies import get_real_ip, require_api_key
+from api.models.orm import AnalyticsLog, LLMConfig, QueryHistory
 from api.models.schemas import (
     AnalysisResult,
     AnalyzeRequest,
@@ -35,13 +34,22 @@ from services.query_comparator import compare_queries
 from services.query_introspector import QueryIntrospectionResult, QueryIntrospector
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/analyze", tags=["analyze"], dependencies=[Depends(require_api_key)])
+_analyze_deps = [] if settings.hosted_mode else [Depends(require_api_key)]
+router = APIRouter(prefix="/analyze", tags=["analyze"], dependencies=_analyze_deps)
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_real_ip)
+
+
+_analyze_rate = settings.hosted_rate_limit if settings.hosted_mode else settings.rate_limit
+
+
+def _safe_detail(public_msg: str, exc: Exception) -> str:
+    """Return a clean message in hosted mode, raw detail in self-hosted."""
+    return public_msg if settings.hosted_mode else f"{public_msg}: {exc}"
 
 
 @router.post("", response_model=AnalysisResult)
-@limiter.limit(settings.rate_limit)
+@limiter.limit(_analyze_rate)
 def analyze_query(
     request: Request,
     body: AnalyzeRequest,
@@ -77,6 +85,54 @@ def analyze_query(
         except Exception as exc:
             logger.warning("DB introspection failed: %s — proceeding without live data", exc)
 
+    # ── Client-provided introspection (Playground mode) ─────────────────────
+    if introspection is None and body.client_explain is not None:
+        from connectors.base import ColumnStat, ExplainResult, IndexInfo, TableSchema
+
+        explain = ExplainResult(
+            raw_plan=body.client_explain.raw_plan,
+            planning_time_ms=body.client_explain.planning_time_ms,
+            execution_time_ms=body.client_explain.execution_time_ms,
+        )
+
+        table_schemas = []
+        for ts in (body.client_table_schemas or []):
+            indexes = [
+                IndexInfo(
+                    index_name=idx.get("index_name", ""),
+                    table_name=idx.get("table_name", ts.table_name),
+                    columns=idx.get("columns", []),
+                    is_unique=idx.get("is_unique", False),
+                    index_type=idx.get("index_type", "btree"),
+                    definition=idx.get("definition", ""),
+                )
+                for idx in ts.indexes
+            ]
+            col_stats = [
+                ColumnStat(
+                    column_name=cs.get("column_name", ""),
+                    null_frac=cs.get("null_frac", 0.0),
+                    avg_width=cs.get("avg_width", 0),
+                    n_distinct=cs.get("n_distinct", 0.0),
+                )
+                for cs in ts.column_stats
+            ]
+            table_schemas.append(TableSchema(
+                table_name=ts.table_name,
+                columns=ts.columns,
+                row_count=ts.row_count,
+                indexes=indexes,
+                column_stats=col_stats,
+            ))
+
+        introspection = QueryIntrospectionResult(
+            sql=body.sql,
+            explain=explain,
+            table_schemas=table_schemas,
+            table_names=[ts.table_name for ts in table_schemas],
+            db_type=body.client_db_type or "postgresql",
+        )
+
     # Build a minimal introspection object when no live DB is available
     if introspection is None:
         from services.query_introspector import extract_table_names
@@ -89,19 +145,24 @@ def analyze_query(
             db_type=conn_record.db_type if conn_record else None,
         )
 
-    # ── Resolve LLM provider (DB config takes priority over .env) ────────────
+    # ── Resolve LLM provider ────────────────────────────────────────────────
     provider_override = None
-    active_config = db.query(LLMConfig).filter(LLMConfig.is_active.is_(True)).first()
-    if active_config:
-        try:
-            api_key = decrypt(active_config.encrypted_api_key)
-            provider_override = get_provider(
-                provider_name=active_config.provider,
-                api_key=api_key,
-                model=body.model,  # model chosen at analysis time
-            )
-        except Exception as exc:
-            logger.warning("Failed to load active LLM config %s: %s — falling back to .env", active_config.id, exc)
+    if settings.hosted_mode:
+        # Hosted: always use env-configured provider/model — ignore user overrides
+        pass
+    else:
+        # Self-hosted: DB config takes priority over .env
+        active_config = db.query(LLMConfig).filter(LLMConfig.is_active.is_(True)).first()
+        if active_config:
+            try:
+                api_key = decrypt(active_config.encrypted_api_key)
+                provider_override = get_provider(
+                    provider_name=active_config.provider,
+                    api_key=api_key,
+                    model=body.model,  # model chosen at analysis time
+                )
+            except Exception as exc:
+                logger.warning("Failed to load active LLM config %s: %s — falling back to .env", active_config.id, exc)
 
     # ── LLM Analysis ─────────────────────────────────────────────────────────
     try:
@@ -109,25 +170,42 @@ def analyze_query(
         result = analyzer.analyze(introspection, query_id=query_id, provider_override=provider_override)
     except Exception as exc:
         logger.exception("LLM analysis failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"LLM analysis failed: {exc}")
+        raise HTTPException(status_code=502, detail=_safe_detail("Analysis failed. Please try again", exc))
 
     # ── Attach EXPLAIN error if query execution failed ──────────────────────
     if introspection.explain_error:
         result.explain_error = introspection.explain_error
 
-    # ── Persist to query history ──────────────────────────────────────────────
-    try:
-        history = QueryHistory(
-            id=query_id,
-            connection_id=body.connection_id,
-            sql_query=body.sql,
-            explain_plan=introspection.explain.raw_plan if introspection.explain else None,
-            llm_response=result.model_dump_json(),
-        )
-        db.add(history)
-        db.commit()
-    except Exception as exc:
-        logger.warning("Failed to persist query history: %s", exc)
+    # ── Persist ────────────────────────────────────────────────────────────────
+    if settings.hosted_mode:
+        # Hosted: store only suggestion counts — no query content
+        try:
+            log = AnalyticsLog(
+                index_count=len(result.indexes),
+                rewrite_count=len(result.rewrites),
+                materialized_view_count=len(result.materialized_views),
+                bottleneck_count=len(result.bottlenecks),
+                statistics_count=len(result.statistics),
+                configuration_count=len(result.configuration),
+            )
+            db.add(log)
+            db.commit()
+        except Exception as exc:
+            logger.warning("Failed to persist analytics log: %s", exc)
+    else:
+        # Self-hosted: write to user-visible query history
+        try:
+            history = QueryHistory(
+                id=query_id,
+                connection_id=body.connection_id,
+                sql_query=body.sql,
+                explain_plan=introspection.explain.raw_plan if introspection.explain else None,
+                llm_response=result.model_dump_json(),
+            )
+            db.add(history)
+            db.commit()
+        except Exception as exc:
+            logger.warning("Failed to persist query history: %s", exc)
 
     return result
 
@@ -137,6 +215,8 @@ def get_history(
     limit: int = 50,
     db: Session = Depends(get_db),
 ):
+    if settings.hosted_mode:
+        return []
     rows = (
         db.query(QueryHistory)
         .order_by(QueryHistory.created_at.desc())
@@ -148,6 +228,17 @@ def get_history(
 
 @router.get("/stats", response_model=DashboardStats)
 def get_stats(db: Session = Depends(get_db)):
+    if settings.hosted_mode:
+        return DashboardStats(
+            total_queries=0,
+            total_suggestions=0,
+            high_impact_count=0,
+            streak_days=0,
+            top_categories=[],
+            most_analyzed_tables=[],
+            queries_by_date=[],
+            recent_analyses=[],
+        )
     """Dashboard statistics: totals, per-day counts, and recent analyses."""
     from datetime import datetime, timedelta
     from sqlalchemy import func
@@ -265,7 +356,7 @@ def get_stats(db: Session = Depends(get_db)):
 
 
 @router.post("/compare", response_model=CompareResult)
-@limiter.limit(settings.rate_limit)
+@limiter.limit(_analyze_rate)
 def compare_rewrites(
     request: Request,
     body: CompareRequest,
@@ -292,13 +383,13 @@ def compare_rewrites(
         raise
     except Exception as exc:
         logger.exception("Query comparison failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Query comparison failed: {exc}")
+        raise HTTPException(status_code=502, detail=_safe_detail("Query comparison failed. Please check your SQL and retry", exc))
 
     return result
 
 
 @router.post("/simulate-index", response_model=SimulateIndexResult)
-@limiter.limit(settings.rate_limit)
+@limiter.limit(_analyze_rate)
 def simulate_index(
     request: Request,
     body: SimulateIndexRequest,
@@ -336,7 +427,7 @@ def simulate_index(
         raise
     except Exception as exc:
         logger.exception("Index simulation failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Index simulation failed: {exc}")
+        raise HTTPException(status_code=502, detail=_safe_detail("Index simulation failed. Please try again", exc))
     finally:
         if raw_conn:
             try:
