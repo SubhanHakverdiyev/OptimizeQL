@@ -111,6 +111,33 @@ function AnalyzePageInner() {
       localStorage.setItem("playground-schema-ddl", landingSchema);
       localStorage.setItem("playground-query-sql", landingQuery);
       autoAnalyzeRef.current = true;
+
+      // Load schema directly with the exact landing DDL to avoid stale
+      // closure issues (localStorage may hold a different DDL from a
+      // previous session, and handleLoadSchema would read that stale value).
+      (async () => {
+        setSchemaStatus({ state: "loading" });
+        try {
+          const pglite = await import("@/lib/pglite-service");
+          await pglite.reset();
+          const { tables, error: ddlError } = await pglite.executeDDL(landingSchema);
+          if (ddlError) {
+            setSchemaStatus({ state: "error", message: ddlError });
+            return;
+          }
+          if (tables.length === 0) {
+            setSchemaStatus({ state: "error", message: "No tables created." });
+            return;
+          }
+          await pglite.resetPlannerSettings();
+          setSchemaStatus({ state: "ready", tables });
+        } catch (err) {
+          setSchemaStatus({
+            state: "error",
+            message: err instanceof Error ? err.message : "Failed to load schema",
+          });
+        }
+      })();
       return;
     }
 
@@ -195,13 +222,6 @@ function AnalyzePageInner() {
       });
     }
   }, [schemaDDL]);
-
-  // ── Auto-load schema from landing page handoff ───────────────────────────
-  useEffect(() => {
-    if (autoAnalyzeRef.current && schemaDDL.trim() && schemaStatus.state === "empty") {
-      handleLoadSchema();
-    }
-  }, [schemaDDL, schemaStatus.state, handleLoadSchema]);
 
   // ── Playground: Analyze ────────────────────────────────────────────────────
   const handlePlaygroundAnalyze = async () => {
