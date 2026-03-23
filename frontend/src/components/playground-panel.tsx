@@ -105,6 +105,8 @@ export default function PlaygroundPanel({
     localStorage.setItem("playground-schema-ddl", preset.ddl);
     localStorage.setItem("playground-query-sql", preset.sampleQuery);
     changeSubTab("schema");
+    // Reset PGlite so the user must re-load schema for the new DDL
+    onReset();
   };
 
   // Load table data when switching to Data tab or schema becomes ready

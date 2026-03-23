@@ -331,14 +331,13 @@ export async function generateAndInsertData(
       try {
         const res = await pg.query<{ id: number }>(sql);
         for (const row of res.rows) {
-          ids.push(row.id);
+          if (row.id != null) ids.push(Number(row.id));
         }
       } catch {
         // If RETURNING fails, try without it
         try {
           const sqlNoReturn = `INSERT INTO "${tableName}" (${colNames}) VALUES ${valueSets.join(", ")}`;
           await pg.exec(sqlNoReturn);
-          for (let k = batch; k < end; k++) ids.push(k + 1);
         } catch (e2) {
           console.warn(
             `[data-gen] Insert failed for "${tableName}":`,
@@ -346,6 +345,20 @@ export async function generateAndInsertData(
           );
           break;
         }
+      }
+    }
+
+    // Query actual IDs from the table (handles RETURNING failures & sequence mismatches)
+    if (ids.length === 0 && hasIdColumn(columns)) {
+      try {
+        const idRes = await pg.query<{ id: number }>(
+          `SELECT id FROM "${tableName}" ORDER BY id`,
+        );
+        for (const row of idRes.rows) {
+          if (row.id != null) ids.push(Number(row.id));
+        }
+      } catch {
+        // Best effort — child tables will use fallback values
       }
     }
 

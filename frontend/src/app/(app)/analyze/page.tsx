@@ -224,9 +224,9 @@ function AnalyzePageInner() {
       // Regenerate data with query hints so filter values exist in the dataset
       const { generateAndInsertData } = await import("@/lib/data-generator");
       const pgInstance = await pglite.getDB();
-      // Truncate existing data before regenerating
+      // Truncate existing data and reset sequences before regenerating
       for (const t of schemaStatus.tables || []) {
-        await pgInstance.exec(`TRUNCATE TABLE "${t}" CASCADE`);
+        await pgInstance.exec(`TRUNCATE TABLE "${t}" RESTART IDENTITY CASCADE`);
       }
       const { emptyTables } = await generateAndInsertData(
         schemaDDL,
