@@ -241,17 +241,15 @@ function AnalyzePageInner() {
     try {
       const pglite = await import("@/lib/pglite-service");
 
-      // Regenerate data with query hints so filter values exist in the dataset
-      const { generateAndInsertData } = await import("@/lib/data-generator");
-      const pgInstance = await pglite.getDB();
       // Truncate existing data and reset sequences before regenerating
+      const pgInstance = await pglite.getDB();
       for (const t of schemaStatus.tables || []) {
         await pgInstance.exec(`TRUNCATE TABLE "${t}" RESTART IDENTITY CASCADE`);
       }
-      const { emptyTables } = await generateAndInsertData(
+      // Data generation runs entirely in the worker (no main-thread jank)
+      const { emptyTables } = await pglite.generateAndInsertData(
         schemaDDL,
         schemaStatus.tables || [],
-        pgInstance,
         10000,
         playgroundQuery,
       );
