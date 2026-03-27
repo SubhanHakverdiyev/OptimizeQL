@@ -65,7 +65,7 @@ export function SuggestionCard({ item, originalSql, connectionId, querySql, dbTy
           for (let i = 0; i < maxRows; i++) {
             if (JSON.stringify(origRows[i]) !== JSON.stringify(rewrittenRows[i])) {
               match = false;
-              firstDiff = { row_number: i + 1, original_row: origRows[i] as unknown[], rewritten_row: rewrittenRows[i] as unknown[] };
+              firstDiff = { row_number: i + 1, original_row: origRows[i] as unknown as unknown[], rewritten_row: rewrittenRows[i] as unknown as unknown[] };
               break;
             }
           }
