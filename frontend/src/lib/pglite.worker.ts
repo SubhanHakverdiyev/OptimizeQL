@@ -1,5 +1,3 @@
-import { PGlite } from "@electric-sql/pglite";
-import { generateAndInsertData } from "./data-generator";
 import type {
   ClientTableSchema,
   ClientTableColumn,
@@ -8,19 +6,35 @@ import type {
 } from "./types";
 
 // ── Patch fetch so PGlite can resolve relative asset URLs inside the worker ──
+// Workers created by bundlers often have blob: or file: base URLs, so relative
+// paths like /_next/static/media/pglite.data can't resolve. We prepend the
+// page origin (sent from the main thread) to make them absolute.
 let _origin = "";
 const _originalFetch = globalThis.fetch.bind(globalThis);
 globalThis.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
   if (typeof input === "string" && input.startsWith("/") && _origin) {
     return _originalFetch(_origin + input, init);
   }
+  if (input instanceof URL && input.protocol === "blob:" && _origin) {
+    // Some bundlers produce blob: URLs for assets — fall back to pathname
+    try {
+      return _originalFetch(_origin + input.pathname, init);
+    } catch {
+      /* fall through */
+    }
+  }
   return _originalFetch(input, init);
 } as typeof fetch;
 
-let pg: PGlite | null = null;
+// ── PGlite instance (lazily created via dynamic import) ──────────────────────
+type PGliteInstance = import("@electric-sql/pglite").PGlite;
+let pg: PGliteInstance | null = null;
 
-async function getOrCreate(): Promise<PGlite> {
+async function getOrCreate(): Promise<PGliteInstance> {
   if (!pg) {
+    // Dynamic import: ensures the fetch patch + _origin are ready before
+    // PGlite's module code tries to resolve its WASM/data asset URLs.
+    const { PGlite } = await import("@electric-sql/pglite");
     pg = new PGlite();
   }
   return pg;
@@ -251,6 +265,7 @@ self.onmessage = async (e: MessageEvent) => {
 
       case "generateAndInsertData": {
         const db = await getOrCreate();
+        const { generateAndInsertData } = await import("./data-generator");
         result = await generateAndInsertData(
           args.ddl,
           args.tables,
