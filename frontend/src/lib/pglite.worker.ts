@@ -5,37 +5,39 @@ import type {
   ClientColumnStat,
 } from "./types";
 
-// ── Patch fetch so PGlite can resolve relative asset URLs inside the worker ──
-// Workers created by bundlers often have blob: or file: base URLs, so relative
-// paths like /_next/static/media/pglite.data can't resolve. We prepend the
-// page origin (sent from the main thread) to make them absolute.
-let _origin = "";
-const _originalFetch = globalThis.fetch.bind(globalThis);
-globalThis.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
-  if (typeof input === "string" && input.startsWith("/") && _origin) {
-    return _originalFetch(_origin + input, init);
-  }
-  if (input instanceof URL && input.protocol === "blob:" && _origin) {
-    // Some bundlers produce blob: URLs for assets — fall back to pathname
-    try {
-      return _originalFetch(_origin + input.pathname, init);
-    } catch {
-      /* fall through */
-    }
-  }
-  return _originalFetch(input, init);
-} as typeof fetch;
+// ── Pre-fetch PGlite assets with absolute URLs ──────────────────────────────
+// PGlite internally does `new URL("./pglite.wasm", import.meta.url)` which
+// breaks in workers because import.meta.url resolves to a blob: or unusable
+// base. Instead, we serve the assets from /public/pglite/ (copied by
+// postinstall) and fetch them ourselves with absolute URLs, then hand them
+// to PGlite via its wasmModule + fsBundle constructor options.
 
-// ── PGlite instance (lazily created via dynamic import) ──────────────────────
+let _origin = "";
+
 type PGliteInstance = import("@electric-sql/pglite").PGlite;
 let pg: PGliteInstance | null = null;
 
 async function getOrCreate(): Promise<PGliteInstance> {
   if (!pg) {
-    // Dynamic import: ensures the fetch patch + _origin are ready before
-    // PGlite's module code tries to resolve its WASM/data asset URLs.
+    // Wait until the main thread sends the page origin
+    while (!_origin) await new Promise((r) => setTimeout(r, 5));
+
+    // Fetch WASM + data from /public/pglite/ using absolute URLs
+    const [wasmResp, dataResp] = await Promise.all([
+      fetch(_origin + "/pglite/pglite.wasm"),
+      fetch(_origin + "/pglite/pglite.data"),
+    ]);
+
+    if (!wasmResp.ok)
+      throw new Error(`Failed to fetch pglite.wasm: ${wasmResp.status}`);
+    if (!dataResp.ok)
+      throw new Error(`Failed to fetch pglite.data: ${dataResp.status}`);
+
+    const wasmModule = await WebAssembly.compile(await wasmResp.arrayBuffer());
+    const fsBundle = new Blob([await dataResp.arrayBuffer()]);
+
     const { PGlite } = await import("@electric-sql/pglite");
-    pg = new PGlite();
+    pg = new PGlite({ wasmModule, fsBundle });
   }
   return pg;
 }

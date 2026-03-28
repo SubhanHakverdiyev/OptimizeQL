@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# PGlite WASM assets (copied from node_modules by postinstall)
+/public/pglite/
+
 # vercel
 .vercel
 
