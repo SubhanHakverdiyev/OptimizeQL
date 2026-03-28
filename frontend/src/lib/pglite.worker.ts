@@ -7,6 +7,16 @@ import type {
   ClientColumnStat,
 } from "./types";
 
+// ── Patch fetch so PGlite can resolve relative asset URLs inside the worker ──
+let _origin = "";
+const _originalFetch = globalThis.fetch.bind(globalThis);
+globalThis.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+  if (typeof input === "string" && input.startsWith("/") && _origin) {
+    return _originalFetch(_origin + input, init);
+  }
+  return _originalFetch(input, init);
+} as typeof fetch;
+
 let pg: PGlite | null = null;
 
 async function getOrCreate(): Promise<PGlite> {
@@ -18,6 +28,13 @@ async function getOrCreate(): Promise<PGlite> {
 
 self.onmessage = async (e: MessageEvent) => {
   const { id, type, ...args } = e.data;
+
+  // Handle origin setup (no response needed)
+  if (type === "setOrigin") {
+    _origin = args.origin as string;
+    return;
+  }
+
   try {
     let result: unknown;
 

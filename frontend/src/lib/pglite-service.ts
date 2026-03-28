@@ -16,6 +16,8 @@ const pending = new Map<
 function ensureWorker(): Worker {
   if (!worker) {
     worker = new Worker(new URL("./pglite.worker.ts", import.meta.url));
+    // Send page origin so the worker can resolve relative asset URLs
+    worker.postMessage({ id: 0, type: "setOrigin", origin: location.origin });
     worker.onmessage = (e: MessageEvent) => {
       const { id, result, error } = e.data;
       const p = pending.get(id);
